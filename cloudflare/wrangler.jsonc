@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onomichi-club",
+  "account_id": "d67b389071929a51bba0d767867f60bb",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat"],
+  // public/ の静的ファイルを先に配信し、該当が無ければ src/index.js（/api/…）が動く
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    // データの取得元。Apps Script の JSON か、シートを「ウェブに公開」した CSV の URL
+    "DATA_URL": "https://script.google.com/macros/s/AKfycbyMGMMw59yvpsAf01-SKy4_thHLWFPivV0xYk20bzsioV0xnSXXdyqlQ-nkbt-Py3YrPw/exec?format=json",
+    // 取得結果を Cloudflare 側で保持する秒数（この間はシートを変えても反映されない）
+    "CACHE_SECONDS": "300"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

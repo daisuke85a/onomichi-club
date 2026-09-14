@@ -63,3 +63,33 @@ sample-data.csv         … シートの列構成のテンプレート
 `index.html` の先頭 `:root { … }` に色をまとめています。
 `--accent`（メインの青）と `--event`（イベントの橙）を変えると全体の色が変わります。
 フォントは BIZ UDPGothic（本文・UDフォント）と Zen Maru Gothic（見出し）を Google Fonts から読み込んでいます。
+
+## Cloudflare Workers 版（`cloudflare/`）
+
+Google サイト／Apps Script の URL は Instagram など一部のアプリ内ブラウザで開けないため、
+同じ画面を Cloudflare Workers で配信する構成です。データは引き続き同じスプレッドシートを使います。
+
+```
+ブラウザ → Cloudflare Worker ── public/index.html（静的）
+                             └─ /api/clubs → Apps Script (?format=json) → スプレッドシート
+                                   ※ 結果は CACHE_SECONDS（既定 300 秒）キャッシュ
+```
+
+- `apps-script/index.html` が画面の**唯一のソース**です。`scripts/build.sh` が
+  `preview.html` と `cloudflare/public/index.html` を生成します（`npm run build` / `deploy` で自動実行）。
+- 取得元は `cloudflare/wrangler.jsonc` の `DATA_URL`。Apps Script の JSON の代わりに、
+  シートを「ウェブに公開」した CSV の URL を入れても動きます（その場合はシートが公開になります）。
+- 更新直後に確認したいときは `/api/clubs?refresh=1` を一度開くとキャッシュが更新されます。
+
+### デプロイ
+
+```bash
+cd cloudflare
+npm install
+npx wrangler login      # 初回のみ（ブラウザで Cloudflare にログイン）
+npm run deploy
+```
+
+`https://onomichi-club.<アカウント名>.workers.dev` が発行されます。独自ドメインは Cloudflare ダッシュボード → Workers → 設定 → ドメインとルート から追加できます。
+
+ローカル確認は `npm run dev` → http://localhost:8787

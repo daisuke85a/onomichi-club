@@ -14,7 +14,12 @@ const SHEET_NAME = 'クラブ一覧';
 
 const HEADERS = ['公開', '種別', '種目', '名称', '参加対象', '対象学年', '費用', '活動日', '活動場所', '校区', '紹介', '連絡先', 'URL'];
 
-function doGet() {
+function doGet(e) {
+  // ?format=json で一覧を JSON で返す（Cloudflare Workers 版などの外部サイトから読む用）
+  if (e && e.parameter && e.parameter.format === 'json') {
+    return ContentService.createTextOutput(JSON.stringify(getClubs()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('おのみち部活さがし')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')

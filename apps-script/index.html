@@ -282,11 +282,12 @@
 <script>
   // ============================================================
   // 設定
+  //   apiUrl: JSON を返す API の URL（Cloudflare Workers 版では "/api/clubs"）。
   //   csvUrl: スプレッドシートを「ウェブに公開」→ CSV のURL を入れると
   //           Apps Script を使わずに埋め込みコードだけで動きます（任意）。
   //   Apps Script のウェブアプリとして動かす場合は自動で判定されます。
   // ============================================================
-  const CONFIG = { csvUrl: "" };
+  const CONFIG = { apiUrl: "", csvUrl: "" };
 
   // スプレッドシートの見出し（1行目）と同じ名前で扱います
   const COL = {
@@ -338,6 +339,12 @@
     if (window.google && google.script && google.script.run) {
       return new Promise((resolve, reject) =>
         google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getClubs());
+    }
+    if (CONFIG.apiUrl) {
+      return fetch(CONFIG.apiUrl, { cache: "no-store" }).then((r) => {
+        if (!r.ok) throw new Error("API " + r.status);
+        return r.json();
+      }).then((j) => Array.isArray(j) ? j : j.rows);
     }
     if (CONFIG.csvUrl) {
       return fetch(CONFIG.csvUrl, { cache: "no-store" }).then((r) => r.text()).then(parseCSV);

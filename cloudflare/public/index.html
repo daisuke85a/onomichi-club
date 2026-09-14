@@ -1,3 +1,9 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>おのみち部活さがし</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
@@ -222,6 +228,8 @@
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header class="hero">
@@ -279,7 +287,7 @@
   //           Apps Script を使わずに埋め込みコードだけで動きます（任意）。
   //   Apps Script のウェブアプリとして動かす場合は自動で判定されます。
   // ============================================================
-  const CONFIG = { apiUrl: "", csvUrl: "" };
+  const CONFIG = { apiUrl: "/api/clubs", csvUrl: "" };
 
   // スプレッドシートの見出し（1行目）と同じ名前で扱います
   const COL = {
@@ -459,3 +467,5 @@
     $("count").textContent = "0";
   });
 </script>
+</body>
+</html>

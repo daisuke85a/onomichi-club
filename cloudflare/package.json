@@ -1,0 +1,13 @@
+{
+  "name": "onomichi-club-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "sh ../scripts/build.sh",
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
