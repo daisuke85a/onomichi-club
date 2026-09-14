@@ -23,8 +23,8 @@ function doGet() {
 
 /** ブラウザ側（index.html）から google.script.run.getClubs() で呼ばれる */
 function getClubs() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-  if (!sheet) throw new Error('「' + SHEET_NAME + '」というシートがありません。setupSheet() を実行してください。');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
 
   // getDisplayValues: 日付や金額を、シートに表示されている文字のまま受け取る
   const values = sheet.getDataRange().getDisplayValues();
