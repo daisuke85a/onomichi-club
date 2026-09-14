@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>おのみち部活さがし</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+  :root {
+    --bg: #F2F5F4;
+    --surface: #FFFFFF;
+    --ink: #1B2730;
+    --muted: #5C6C75;
+    --line: #D7DFE2;
+    --accent: #1E6E8C;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #DFECF2;
+    --event: #BF5E1C;
+    --event-soft: #F8E7DA;
+    --focus: #E9A93A;
+    --shadow: 0 1px 2px rgba(27, 39, 48, .06), 0 4px 14px rgba(27, 39, 48, .05);
+    --font-body: "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101A1F;
+      --surface: #18252C;
+      --ink: #E7EDF0;
+      --muted: #9AAAB2;
+      --line: #2B3B44;
+      --accent: #6ABBD6;
+      --accent-ink: #0D1A20;
+      --accent-soft: #1E3641;
+      --event: #EB9A62;
+      --event-soft: #3E2A1D;
+      --focus: #F2B84B;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101A1F;
+    --surface: #18252C;
+    --ink: #E7EDF0;
+    --muted: #9AAAB2;
+    --line: #2B3B44;
+    --accent: #6ABBD6;
+    --accent-ink: #0D1A20;
+    --accent-soft: #1E3641;
+    --event: #EB9A62;
+    --event-soft: #3E2A1D;
+    --focus: #F2B84B;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 48px; }
+
+  /* ---------- header ---------- */
+  .hero { padding: 20px 0 12px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .08em; color: var(--muted);
+    margin: 0 0 4px;
+  }
+  .hero h1 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 24px; line-height: 1.3; margin: 0; text-wrap: balance;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .lede { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; max-width: 34em; }
+
+  .notice {
+    display: none; margin: 12px 0 0; padding: 8px 12px;
+    border-left: 4px solid var(--event); background: var(--event-soft);
+    color: var(--ink); font-size: 13px; border-radius: 0 6px 6px 0;
+  }
+  .notice.show { display: block; }
+
+  /* ---------- filters ---------- */
+  .filters {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg);
+    padding: 12px 0 10px; margin: 8px -16px 0; padding-left: 16px; padding-right: 16px;
+    border-bottom: 1px solid var(--line);
+    display: grid; gap: 10px;
+  }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0 12px; height: 44px;
+  }
+  .search svg { flex: none; width: 18px; height: 18px; color: var(--muted); }
+  .search input {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+    font: inherit; font-size: 16px; height: 100%; outline: none;
+  }
+  .search input::placeholder { color: var(--muted); }
+  .search button {
+    display: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: 13px; padding: 4px; cursor: pointer;
+  }
+  .search.has-value button { display: block; }
+
+  .seg {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px;
+  }
+  .seg button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700;
+    font-size: 14px; height: 36px; border-radius: 8px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  .chips {
+    display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips button {
+    flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .chips button[aria-pressed="true"] {
+    background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700;
+  }
+  .chips button .n { color: var(--muted); font-size: 11px; margin-left: 3px; font-variant-numeric: tabular-nums; }
+  .chips button[aria-pressed="true"] .n { color: inherit; }
+
+  .selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .selects label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
+  .selects select {
+    width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; padding: 0 8px;
+  }
+
+  /* ---------- results ---------- */
+  .resultbar {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 12px 0 8px; font-size: 13px; color: var(--muted);
+  }
+  .resultbar strong { color: var(--ink); font-size: 18px; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+  .resultbar button {
+    border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px; padding: 0;
+  }
+
+  .list { display: grid; gap: 12px; }
+
+  .card {
+    background: var(--surface); border-radius: 12px; box-shadow: var(--shadow);
+    padding: 14px 16px 12px; border-top: 4px solid var(--accent);
+  }
+  .card.event { border-top-color: var(--event); }
+  .card-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .tag {
+    display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); line-height: 1.6;
+  }
+  .tag.kind-event { background: var(--event-soft); color: var(--event); }
+  .tag.target { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 400; }
+  .card h2 {
+    font-family: var(--font-display); font-weight: 700; font-size: 18px; line-height: 1.35;
+    margin: 0 0 10px; text-wrap: balance;
+  }
+  .facts { margin: 0; display: grid; gap: 4px 12px; }
+  @media (min-width: 520px) { .facts { grid-template-columns: 1fr 1fr; } }
+  .facts > div { display: grid; grid-template-columns: 3.4em 1fr; gap: 6px; align-items: baseline; }
+  .facts dt { font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
+  .facts dd { margin: 0; font-size: 14.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .facts dd.fee { font-weight: 700; }
+
+  details { margin-top: 8px; border-top: 1px dashed var(--line); }
+  summary {
+    cursor: pointer; list-style: none; padding: 10px 0 4px; color: var(--accent); font-size: 13.5px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px; user-select: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-2px); transition: transform .15s;
+  }
+  details[open] summary::before { transform: rotate(225deg) translateY(-1px); }
+  details[open] summary .open-label { display: none; }
+  details:not([open]) summary .close-label { display: none; }
+  .detail-body { padding: 4px 0 6px; display: grid; gap: 10px; }
+  .detail-body p { margin: 0; font-size: 14px; }
+  .meta { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .meta span b { color: var(--ink); font-weight: 400; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 42px; padding: 0 18px; border-radius: 10px; text-decoration: none;
+    background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px;
+    justify-self: start;
+  }
+  .card.event .btn { background: var(--event); color: #fff; }
+
+  .empty {
+    text-align: center; padding: 40px 16px; color: var(--muted); background: var(--surface);
+    border-radius: 12px; border: 1px dashed var(--line);
+  }
+  .empty p { margin: 0 0 12px; }
+  .empty button {
+    border: 1px solid var(--accent); background: transparent; color: var(--accent); font: inherit; font-weight: 700;
+    padding: 8px 18px; border-radius: 999px; cursor: pointer;
+  }
+  .loading { padding: 40px 0; text-align: center; color: var(--muted); font-size: 14px; }
+
+  footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; display: grid; gap: 6px; }
+  footer p { margin: 0; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">尾道市 中学生向け ・ 学校の外で活動できる場所</p>
+    <h1>土日に、<em>やりたいこと</em>を続けられる場所さがし</h1>
+    <p class="lede">市内のクラブ・教室・体験イベントをまとめています。種目や校区でしぼりこんで、気になる団体には直接お問い合わせください。</p>
+    <p class="notice" id="notice"></p>
+  </header>
+
+  <section class="filters" aria-label="しぼりこみ">
+    <div class="search" id="searchBox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="q" type="search" placeholder="団体名・種目・場所でさがす" autocomplete="off" aria-label="キーワード検索">
+      <button type="button" id="clearQ" aria-label="検索語を消す">消す</button>
+    </div>
+    <div class="seg" role="group" aria-label="種別" id="kindSeg">
+      <button type="button" data-kind="" aria-pressed="true">すべて</button>
+      <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
+      <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
+    </div>
+    <div class="chips" id="sportChips" role="group" aria-label="種目"></div>
+    <div class="selects">
+      <label>校区（最寄りの中学校）
+        <select id="school"><option value="">すべての校区</option></select>
+      </label>
+      <label>参加できる人
+        <select id="target">
+          <option value="">だれでも</option>
+          <option value="男子">男子が参加できる</option>
+          <option value="女子">女子が参加できる</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <div class="resultbar">
+    <span><strong id="count">–</strong> 件</span>
+    <button type="button" id="resetAll">条件をクリア</button>
+  </div>
+
+  <div class="list" id="list"><div class="loading">読み込んでいます…</div></div>
+
+  <footer>
+    <p>掲載内容は各団体からの申告にもとづきます。費用・日程は変更になることがあるため、必ず団体にご確認ください。</p>
+    <p>掲載を希望する団体の方は、教育委員会（学校教育課）までご連絡ください。</p>
+    <p id="updated"></p>
+  </footer>
+</div>
+
+<script>
+  // ============================================================
+  // 設定
+  //   csvUrl: スプレッドシートを「ウェブに公開」→ CSV のURL を入れると
+  //           Apps Script を使わずに埋め込みコードだけで動きます（任意）。
+  //   Apps Script のウェブアプリとして動かす場合は自動で判定されます。
+  // ============================================================
+  const CONFIG = { csvUrl: "" };
+
+  // スプレッドシートの見出し（1行目）と同じ名前で扱います
+  const COL = {
+    pub: "公開", kind: "種別", sport: "種目", name: "名称", target: "参加対象", grade: "対象学年",
+    fee: "費用", days: "活動日", place: "活動場所", school: "校区", desc: "紹介", contact: "連絡先", url: "URL"
+  };
+
+  // ---- サンプルデータ（架空の団体です） ----
+  const SAMPLE = [
+    { 公開:"TRUE", 種別:"クラブ", 種目:"バスケットボール", 名称:"尾道シーサイド・バスケットクラブ U15", 参加対象:"男子・女子", 対象学年:"中1〜中3", 費用:"月3,000円", 活動日:"週2日（火・木 19:00〜21:00）", 活動場所:"長江中学校 体育館", 校区:"長江中学校", 紹介:"部活動の受け皿として2026年春に発足。経験者も初心者も歓迎。中体連の大会にも出場します。", 連絡先:"担当：山本（070-0000-0001）", URL:"https://example.com/seaside-bb" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"サッカー", 名称:"しまなみFC ジュニアユース", 参加対象:"男子・女子", 対象学年:"中1〜中3", 費用:"月6,000円", 活動日:"週3日（水・土・日）", 活動場所:"びんご運動公園 多目的グラウンド", 校区:"高西中学校", 紹介:"広島県ユースリーグ所属。土日は試合・遠征が中心です。スクールバス（尾道駅発）あり。", 連絡先:"info@example.com", URL:"https://example.com/shimanami-fc" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"卓球", 名称:"尾道卓球クラブ", 参加対象:"男子・女子", 対象学年:"小5〜中3", 費用:"月2,000円", 活動日:"週1日（土 9:00〜12:00）", 活動場所:"尾道市総合体育館 サブアリーナ", 校区:"久保中学校", 紹介:"ラケットは貸出あり。市民大会に向けて基礎から練習します。", 連絡先:"担当：佐藤（090-0000-0002）", URL:"" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"吹奏楽", 名称:"尾道ジュニアウインドオーケストラ", 参加対象:"男子・女子", 対象学年:"中1〜高3", 費用:"月1,500円", 活動日:"週1日（日 13:00〜17:00）", 活動場所:"しまなみ交流館 リハーサル室", 校区:"栗原中学校", 紹介:"市内の中高生で編成。楽器は学校のものを借用可（要相談）。年2回の定期演奏会。", 連絡先:"ojwo@example.com", URL:"https://example.com/ojwo" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"陸上", 名称:"向島ランニングクラブ", 参加対象:"男子・女子", 対象学年:"小4〜中3", 費用:"月1,000円", 活動日:"週1日（土 8:00〜10:00）", 活動場所:"向島運動公園", 校区:"向島中学校", 紹介:"長距離・短距離どちらも。保険料込み。雨天は体育館でトレーニング。", 連絡先:"担当：田中", URL:"" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"剣道", 名称:"尾道剣友会", 参加対象:"男子・女子", 対象学年:"小1〜中3", 費用:"月2,500円", 活動日:"週2日（火・金 18:30〜20:30）", 活動場所:"久保中学校 武道場", 校区:"久保中学校", 紹介:"創立40年。防具の貸出あり。段審査の受審サポートも行います。", 連絡先:"担当：中村（0848-00-0003）", URL:"" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"バレーボール", 名称:"日比崎ジュニアバレーボール", 参加対象:"女子", 対象学年:"中1〜中3", 費用:"月2,000円", 活動日:"週2日（水・土）", 活動場所:"日比崎中学校 体育館", 校区:"日比崎中学校", 紹介:"日比崎中の元部活動を母体としたクラブ。他校区からも参加できます。", 連絡先:"担当：小林", URL:"" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"野球", 名称:"因島ボーイズ", 参加対象:"男子", 対象学年:"中1〜中3", 費用:"月8,000円", 活動日:"週3日（土・日・祝）", 活動場所:"因島運動公園 野球場", 校区:"因島南中学校", 紹介:"日本少年野球連盟（ボーイズリーグ）所属。硬式。用具の初期費用が別途かかります。", 連絡先:"innoshima-boys@example.com", URL:"https://example.com/innoshima-boys" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"ダンス", 名称:"ONO-D ダンススタジオ ジュニアクラス", 参加対象:"男子・女子", 対象学年:"中1〜高3", 費用:"月5,000円", 活動日:"週1日（金 19:00〜20:30）", 活動場所:"尾道駅前 スタジオ（尾道市東御所町）", 校区:"栗原中学校", 紹介:"HIPHOP・JAZZ。年1回、尾道みなと祭で発表します。", 連絡先:"onod@example.com", URL:"https://example.com/ono-d" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"美術", 名称:"尾道アートスクール", 参加対象:"男子・女子", 対象学年:"小4〜中3", 費用:"月3,500円（画材込み）", 活動日:"月2回（第2・4 土 10:00〜12:00）", 活動場所:"尾道市立美術館 市民ギャラリー", 校区:"長江中学校", 紹介:"デッサン・水彩・版画。夏には千光寺公園で写生会。", 連絡先:"担当：岡田", URL:"" },
+    { 公開:"TRUE", 種別:"イベント", 種目:"体験会", 名称:"しまなみサイクリング体験教室", 参加対象:"男子・女子", 対象学年:"小4〜中3", 費用:"無料（要申込）", 活動日:"2026年10月11日（日）9:00〜12:00", 活動場所:"尾道港 ONOMICHI U2 前 集合", 校区:"全域", 紹介:"ロードバイクの乗り方から向島一周まで。自転車・ヘルメットは貸出あり。定員20名。", 連絡先:"尾道市観光課", URL:"https://example.com/cycling-trial" },
+    { 公開:"TRUE", 種別:"イベント", 種目:"体験会", 名称:"バドミントン無料体験会", 参加対象:"男子・女子", 対象学年:"中1〜中3", 費用:"無料", 活動日:"2026年10月25日（日）13:00〜15:00", 活動場所:"尾道市総合体育館", 校区:"全域", 紹介:"市バドミントン協会主催。ラケット貸出あり。体験後、クラブへの参加相談もできます。", 連絡先:"尾道市バドミントン協会", URL:"" }
+  ];
+
+  // ------------------------------------------------------------
+  const state = { kind: "", sport: "", school: "", target: "", q: "" };
+  let rows = [];
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  function parseCSV(text) {
+    const out = []; let row = [], cell = "", inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQ) {
+        if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else { inQ = false; } }
+        else cell += ch;
+      } else if (ch === '"') inQ = true;
+      else if (ch === ",") { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); out.push(row); row = []; cell = ""; }
+      else cell += ch;
+    }
+    if (cell !== "" || row.length) { row.push(cell); out.push(row); }
+    const headers = (out.shift() || []).map((h) => h.trim());
+    return out.filter((r) => r.some((c) => c.trim() !== "")).map((r) => Object.fromEntries(headers.map((h, i) => [h, (r[i] || "").trim()])));
+  }
+
+  function loadData() {
+    if (window.google && google.script && google.script.run) {
+      return new Promise((resolve, reject) =>
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getClubs());
+    }
+    if (CONFIG.csvUrl) {
+      return fetch(CONFIG.csvUrl, { cache: "no-store" }).then((r) => r.text()).then(parseCSV);
+    }
+    return Promise.resolve(null);
+  }
+
+  function isPublic(r) { return String(r[COL.pub] || "").toUpperCase() !== "FALSE"; }
+
+  function filtered() {
+    const q = state.q.trim().toLowerCase();
+    return rows.filter((r) =>
+      (!state.kind || r[COL.kind] === state.kind) &&
+      (!state.sport || r[COL.sport] === state.sport) &&
+      (!state.school || r[COL.school] === state.school || r[COL.school] === "全域") &&
+      (!state.target || (r[COL.target] || "").includes(state.target)) &&
+      (!q || [COL.name, COL.sport, COL.place, COL.desc, COL.school].some((k) => (r[k] || "").toLowerCase().includes(q)))
+    );
+  }
+
+  function renderChips() {
+    const base = rows.filter((r) => !state.kind || r[COL.kind] === state.kind);
+    const counts = new Map();
+    base.forEach((r) => { const s = r[COL.sport]; if (s) counts.set(s, (counts.get(s) || 0) + 1); });
+    const sports = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"));
+    if (state.sport && !counts.has(state.sport)) state.sport = "";
+    $("sportChips").innerHTML =
+      `<button type="button" data-sport="" aria-pressed="${state.sport === ""}">すべての種目</button>` +
+      sports.map(([s, n]) => `<button type="button" data-sport="${esc(s)}" aria-pressed="${state.sport === s}">${esc(s)}<span class="n">${n}</span></button>`).join("");
+  }
+
+  function renderSchools() {
+    const set = new Set(rows.map((r) => r[COL.school]).filter((s) => s && s !== "全域"));
+    const sel = $("school");
+    sel.innerHTML = `<option value="">すべての校区</option>` + [...set].sort((a, b) => a.localeCompare(b, "ja")).map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+    sel.value = state.school;
+  }
+
+  function card(r) {
+    const isEvent = r[COL.kind] === "イベント";
+    const url = (r[COL.url] || "").trim();
+    const target = [r[COL.target], r[COL.grade]].filter(Boolean).join(" ／ ");
+    return `
+      <article class="card${isEvent ? " event" : ""}">
+        <div class="card-head">
+          <span class="tag${isEvent ? " kind-event" : ""}">${esc(isEvent ? "イベント" : r[COL.sport])}</span>
+          ${isEvent && r[COL.sport] ? `<span class="tag">${esc(r[COL.sport])}</span>` : ""}
+          ${r[COL.target] ? `<span class="tag target">${esc(r[COL.target])}</span>` : ""}
+        </div>
+        <h2>${esc(r[COL.name])}</h2>
+        <dl class="facts">
+          <div><dt>対象</dt><dd>${esc(target || "—")}</dd></div>
+          <div><dt>費用</dt><dd class="fee">${esc(r[COL.fee] || "—")}</dd></div>
+          <div><dt>${isEvent ? "日時" : "活動日"}</dt><dd>${esc(r[COL.days] || "—")}</dd></div>
+          <div><dt>場所</dt><dd>${esc(r[COL.place] || "—")}</dd></div>
+        </dl>
+        <details>
+          <summary><span class="open-label">くわしく見る</span><span class="close-label">閉じる</span></summary>
+          <div class="detail-body">
+            ${r[COL.desc] ? `<p>${esc(r[COL.desc])}</p>` : ""}
+            <div class="meta">
+              ${r[COL.school] ? `<span>校区：<b>${esc(r[COL.school])}</b></span>` : ""}
+              ${r[COL.contact] ? `<span>連絡先：<b>${esc(r[COL.contact])}</b></span>` : ""}
+            </div>
+            ${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">公式サイト・申込み ↗</a>` : ""}
+          </div>
+        </details>
+      </article>`;
+  }
+
+  function render() {
+    renderChips();
+    const list = filtered();
+    $("count").textContent = list.length;
+    $("list").innerHTML = list.length
+      ? list.map(card).join("")
+      : `<div class="empty"><p>条件に合うクラブ・イベントが見つかりませんでした。</p><button type="button" id="resetEmpty">条件をクリアする</button></div>`;
+    const b = $("resetEmpty"); if (b) b.addEventListener("click", resetAll);
+  }
+
+  function resetAll() {
+    Object.assign(state, { kind: "", sport: "", school: "", target: "", q: "" });
+    $("q").value = ""; $("searchBox").classList.remove("has-value");
+    $("school").value = ""; $("target").value = "";
+    $("kindSeg").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.kind === "" ? "true" : "false"));
+    render();
+  }
+
+  // ---- events ----
+  $("q").addEventListener("input", (e) => {
+    state.q = e.target.value; $("searchBox").classList.toggle("has-value", !!state.q); render();
+  });
+  $("clearQ").addEventListener("click", () => { $("q").value = ""; state.q = ""; $("searchBox").classList.remove("has-value"); render(); $("q").focus(); });
+  $("kindSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.kind = b.dataset.kind;
+    $("kindSeg").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    render();
+  });
+  $("sportChips").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.sport = b.dataset.sport; render();
+  });
+  $("school").addEventListener("change", (e) => { state.school = e.target.value; render(); });
+  $("target").addEventListener("change", (e) => { state.target = e.target.value; render(); });
+  $("resetAll").addEventListener("click", resetAll);
+
+  // ---- boot ----
+  loadData().then((data) => {
+    if (data) {
+      rows = data.filter(isPublic);
+      $("updated").textContent = "この一覧はスプレッドシートから自動で読み込んでいます。";
+    } else {
+      rows = SAMPLE.filter(isPublic);
+      const n = $("notice"); n.textContent = "サンプルデータを表示しています（団体名・費用・日程はすべて架空です）。"; n.classList.add("show");
+    }
+    renderSchools(); render();
+  }).catch((err) => {
+    $("list").innerHTML = `<div class="empty"><p>データを読み込めませんでした。</p><p style="font-size:12px">${esc(err && err.message || err)}</p></div>`;
+    $("count").textContent = "0";
+  });
+</script>
+</body>
+</html>
