@@ -16,7 +16,21 @@ const HEADERS = ['公開', '種別', '種目', '名称', '参加対象', '対象
 
 const PASSWORD_COL = 'URLパスワード';
 
-function doGet() {
+function doGet(e) {
+  // ?health=1 … 自動の見張り（Health.gs）がデプロイ済みのページを外から確かめるための出口。
+  // 件数だけを返し、団体の情報は出さない。
+  if (e && e.parameter && e.parameter.health === '1') {
+    const out = { ok: true, count: 0, at: new Date().toISOString() };
+    try {
+      out.count = getClubs().length;
+    } catch (err) {
+      out.ok = false;
+      out.error = String((err && err.message) || err);
+    }
+    return ContentService.createTextOutput(JSON.stringify(out))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('おのみち部活さがし')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')

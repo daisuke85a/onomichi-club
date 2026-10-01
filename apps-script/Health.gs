@@ -70,24 +70,44 @@ function healthCheck() {
     }
   }
 
-  // --- 4. 公開ページが実際に開けるか ---
-  [HEALTH.webAppUrl].concat(HEALTH.extraUrls || []).filter(Boolean).forEach(url => {
-    try {
-      const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true, validateHttpsCertificates: true });
-      const code = res.getResponseCode();
-      if (code !== 200) {
-        problems.push('ページが開けません（HTTP ' + code + '）： ' + url);
-        return;
+  // --- 4. デプロイ済みのページが、外から見て実際に動いているか ---
+  //
+  // 注意：Apps Script のウェブアプリを取得すると、返るのは画面の中身ではなく
+  // サンドボックスの外枠だけ。画面は後から JavaScript で差し込まれるため、
+  // HTML の中に目印を探す方法では確かめられない。
+  // 代わりに doGet の ?health=1 を叩き、デプロイ済みのコードが実際に
+  // シートを読めているかを件数で確かめる。
+  if (HEALTH.webAppUrl) {
+    const probe = HEALTH.webAppUrl + (HEALTH.webAppUrl.indexOf('?') === -1 ? '?' : '&') + 'health=1';
+    const res = fetch_(probe);
+    if (res.error) {
+      problems.push('公開ページに接続できません：' + res.error);
+    } else if (res.code !== 200) {
+      problems.push('公開ページが開けません（HTTP ' + res.code + '）');
+    } else {
+      let json = null;
+      try { json = JSON.parse(res.body); } catch (err) { /* 下で扱う */ }
+
+      if (!json) {
+        // ログイン画面やエラー画面が返っている
+        problems.push('公開ページが想定外の応答を返しています。'
+          + 'デプロイ設定（アクセスできるユーザー＝全員）と権限承認を確認してください');
+      } else if (!json.ok) {
+        problems.push('公開ページはデータを読めていません：' + (json.error || '原因不明'));
+      } else if (!json.count) {
+        problems.push('公開ページから見える件数が0件です');
+      } else {
+        notes.push('公開ページ応答：正常（' + json.count + '件）');
       }
-      const body = res.getContentText();
-      if (body.indexOf('おのみち部活さがし') === -1 || body.indexOf('id="list"') === -1) {
-        problems.push('ページは開けましたが、中身がいつもと違います： ' + url);
-        return;
-      }
-      notes.push('ページ応答：正常（' + url.slice(0, 60) + '…）');
-    } catch (err) {
-      problems.push('ページに接続できません：' + err.message + '（' + url + '）');
     }
+  }
+
+  // 追加で見張るページ（Cloudflare 版など）。こちらは HTTP 200 が返るかだけ見る
+  (HEALTH.extraUrls || []).filter(Boolean).forEach(url => {
+    const res = fetch_(url);
+    if (res.error) problems.push('ページに接続できません：' + res.error + '（' + url + '）');
+    else if (res.code !== 200) problems.push('ページが開けません（HTTP ' + res.code + '）： ' + url);
+    else notes.push('ページ応答：正常（' + url + '）');
   });
 
   // --- 5. 知らせ先が正しく登録されているか ---
@@ -160,6 +180,20 @@ function report_(problems, notes) {
     }
   }
   props.setProperty('health.status', 'ok');
+}
+
+/** URL を取りに行く。例外は投げず {code, body, error} で返す */
+function fetch_(url) {
+  try {
+    const res = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      validateHttpsCertificates: true,
+    });
+    return { code: res.getResponseCode(), body: res.getContentText(), error: '' };
+  } catch (err) {
+    return { code: 0, body: '', error: String((err && err.message) || err) };
+  }
 }
 
 function isEmail_(s) {
