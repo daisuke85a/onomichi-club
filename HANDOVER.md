@@ -6,6 +6,9 @@
 
 > 編集可能な版（コメントもできます）: https://claude.ai/code/artifact/f6aefcd4-1a07-42d6-9778-ff1159cab776
 
+> この資料は**スプレッドシートの中にも**「引き継ぎ」シートとして入っています。
+> Apps Script で `setupHandoverSheet()` を実行すると作られ、作り直しもできます。
+
 ## このシステムは何か
 
 尾道市の中学生向けに、学校の外で参加できるクラブやイベントを、スマホで探せるようにした WEB ページです。
@@ -219,6 +222,7 @@ Google Apps Script のウェブアプリです。ファイルは2つだけ。
 | ファイル | 中身 |
 | --- | --- |
 | `apps-script/Code.gs` | `doGet()` が画面を返す。`getClubs()` がシートを読んで行を JSON にする（パスワード付きの行は URL を落とす）。`getUrl(row, password)` がパスワードと引き換えに URL を返す。`setupSheet()` / `addPasswordColumn()` はシートの初期設定用 |
+| `apps-script/Handover.gs` | この引き継ぎ資料をスプレッドシート内の「引き継ぎ」シートとして作る |
 | `apps-script/Health.gs` | 自動の見張り。`healthCheck()` が本体、`setupHealthCheck()` でトリガーを仕掛ける |
 | `apps-script/index.html` | 画面すべて（CSS・カードUI・絞り込み）。`google.script.run.getClubs()` でデータを受け取る |
 
