@@ -5,9 +5,14 @@
  * Google 側の仕様変更などでページが表示されなくなったとき、気づかずに放置するのを防ぐためのものです。
  *
  * 【使い方】Apps Script エディタで setupHealthCheck() を1回だけ実行してください。
+ *          「通知先」シートができるので、そこに知らせ先のメールアドレスを書きます（複数可）。
  *          止めるときは removeHealthCheck() を実行します。
  *          メールが届くか試すには testHealthCheck() を実行します。
  */
+
+// 知らせ先を書くシート。1行1アドレスで、何人でも登録できます
+const NOTIFY_SHEET_NAME = '通知先';
+const NOTIFY_HEADERS = ['有効', 'メールアドレス', '担当・備考'];
 
 const HEALTH = {
   // 見張る公開ページ。デプロイし直して URL が変わったらここも直す
@@ -16,7 +21,7 @@ const HEALTH = {
   // 追加で見張りたいページがあれば URL を足す（Cloudflare 版など）。不要なら空のまま
   extraUrls: [],
 
-  // 知らせ先。空ならこのスクリプトの持ち主のアドレスに送る
+  // 予備の知らせ先。「通知先」シートが空のときだけ使う（空ならスクリプトの持ち主に送る）
   notifyTo: '',
 
   // 異常が続いている間、何時間おきに催促メールを送るか
@@ -85,6 +90,17 @@ function healthCheck() {
     }
   });
 
+  // --- 5. 知らせ先が正しく登録されているか ---
+  const notify = getNotifyAddresses_();
+  if (!notify.to.length) {
+    problems.push('知らせ先のメールアドレスが1件も登録されていません');
+  } else {
+    notes.push('知らせ先：' + notify.to.join('、') + '（' + notify.source + '）');
+  }
+  if (notify.invalid.length) {
+    problems.push('「' + NOTIFY_SHEET_NAME + '」シートに、メールアドレスとして読めない行があります：' + notify.invalid.join('、'));
+  }
+
   report_(problems, notes);
 }
 
@@ -146,20 +162,96 @@ function report_(problems, notes) {
   props.setProperty('health.status', 'ok');
 }
 
+function isEmail_(s) {
+  return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(s).trim());
+}
+
+/**
+ * 知らせ先を決める。
+ *   1. 「通知先」シートの、有効チェックが入っている行すべて
+ *   2. 無ければ HEALTH.notifyTo
+ *   3. それも無ければスクリプトの持ち主
+ * 誰にも届かない事態を避けるため、必ずどれかに落ちるようにしてある。
+ */
+function getNotifyAddresses_() {
+  const out = { to: [], invalid: [], source: '' };
+
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOTIFY_SHEET_NAME);
+    if (sheet && sheet.getLastRow() > 1) {
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, NOTIFY_HEADERS.length).getDisplayValues()
+        .forEach(r => {
+          const addr = String(r[1] || '').trim();
+          if (!addr) return;
+          if (String(r[0] || '').toUpperCase() === 'FALSE') return; // チェックを外した行は送らない
+          if (isEmail_(addr)) {
+            if (out.to.indexOf(addr) === -1) out.to.push(addr);
+          } else {
+            out.invalid.push(addr);
+          }
+        });
+      if (out.to.length) out.source = '「' + NOTIFY_SHEET_NAME + '」シート（' + out.to.length + '件）';
+    }
+  } catch (err) {
+    // シートが読めなくても通知自体は止めない
+  }
+
+  if (!out.to.length && HEALTH.notifyTo && isEmail_(HEALTH.notifyTo)) {
+    out.to = [HEALTH.notifyTo.trim()];
+    out.source = 'Health.gs の HEALTH.notifyTo';
+  }
+  if (!out.to.length) {
+    const owner = Session.getEffectiveUser().getEmail();
+    if (owner) { out.to = [owner]; out.source = 'スクリプトの持ち主'; }
+  }
+  return out;
+}
+
 function send_(subject, body) {
-  const to = HEALTH.notifyTo || Session.getEffectiveUser().getEmail();
-  if (!to) throw new Error('送信先のメールアドレスが分かりません。HEALTH.notifyTo に設定してください。');
-  MailApp.sendEmail(to, subject, body);
+  const n = getNotifyAddresses_();
+  if (!n.to.length) throw new Error('送信先のメールアドレスが分かりません。「' + NOTIFY_SHEET_NAME + '」シートに登録してください。');
+
+  const extra = n.invalid.length
+    ? '\n\n※「' + NOTIFY_SHEET_NAME + '」シートに、メールアドレスとして読めない行がありました：' + n.invalid.join('、')
+    : '';
+  MailApp.sendEmail(n.to.join(','), subject, body + extra);
+}
+
+/**
+ * 「通知先」シートを用意する（すでにあれば何もしない）。
+ * setupHealthCheck() から自動で呼ばれるので、普段は直接実行しなくて構いません。
+ */
+function setupNotifySheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(NOTIFY_SHEET_NAME)) return ss.getSheetByName(NOTIFY_SHEET_NAME);
+
+  const sheet = ss.insertSheet(NOTIFY_SHEET_NAME);
+  sheet.getRange(1, 1, 1, NOTIFY_HEADERS.length).setValues([NOTIFY_HEADERS])
+    .setFontWeight('bold').setBackground('#DFECF2');
+  sheet.setFrozenRows(1);
+
+  const owner = Session.getEffectiveUser().getEmail();
+  sheet.getRange(2, 1, 1, NOTIFY_HEADERS.length).setValues([[true, owner || '', '管理者']]);
+
+  const MAX = 50;
+  sheet.getRange(2, 1, MAX, 1).insertCheckboxes();
+  sheet.getRange(2, 1, MAX, 1).setValue(false);
+  sheet.getRange(2, 1).setValue(true);
+  [60, 280, 200].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  sheet.getRange(1, 2).setNote('1行に1アドレス。何人でも登録できます。左のチェックを外すと、その人には送られません。');
+  return sheet;
 }
 
 /** 1回だけ実行：毎日1回の見張りを仕掛ける */
 function setupHealthCheck() {
+  setupNotifySheet();
   removeHealthCheck();
   ScriptApp.newTrigger('healthCheck').timeBased().everyDays(1).atHour(8).create();
-  const to = HEALTH.notifyTo || Session.getEffectiveUser().getEmail();
+  const n = getNotifyAddresses_();
   send_('おのみち部活さがし の見張りを開始しました',
-    ['毎日8時台にページとデータを自動で確認し、問題があればこのアドレスにお知らせします。',
-     '', '知らせ先：' + to,
+    ['毎日8時台にページとデータを自動で確認し、問題があればお知らせします。',
+     '', '知らせ先：' + n.to.join('、') + '（' + n.source + '）',
+     '知らせ先を増やすには、スプレッドシートの「' + NOTIFY_SHEET_NAME + '」シートに行を足してください。',
      '週次レポート：' + (HEALTH.weeklyDigestDay >= 0 ? '毎週' + '日月火水木金土'.charAt(HEALTH.weeklyDigestDay) + '曜日' : 'なし'),
      '', '止めるときは Apps Script エディタで removeHealthCheck() を実行してください。'].join('\n'));
 }
