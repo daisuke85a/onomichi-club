@@ -218,11 +218,26 @@
   }
   .lock-note { margin: 0; font-size: 12.5px; color: var(--muted); }
   .lock-row { display: flex; gap: 8px; }
+  .pw-wrap { position: relative; flex: 1; min-width: 0; }
   .lock-row input {
-    flex: 1; min-width: 0; height: 40px; border: 1px solid var(--line); border-radius: 8px;
-    background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; padding: 0 10px;
+    width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface); color: var(--ink); font: inherit; font-size: 16px;
+    padding: 0 44px 0 10px; /* 右は目のボタンのぶん空ける */
   }
-  .lock-row button {
+  /* パスワードの表示／非表示を切り替える目のボタン（入力欄の右端に重ねる） */
+  .pw-toggle {
+    position: absolute; top: 1px; right: 1px; width: 40px; height: 38px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 0 7px 7px 0; background: none; color: var(--muted); cursor: pointer; padding: 0;
+  }
+  .pw-toggle:hover { color: var(--ink); }
+  .pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .pw-toggle svg { width: 20px; height: 20px; display: block; }
+  .pw-toggle .icon-off { display: none; }
+  .pw-toggle[aria-pressed="true"] .icon-on { display: none; }
+  .pw-toggle[aria-pressed="true"] .icon-off { display: block; }
+  .pw-toggle[aria-pressed="true"] { color: var(--accent); }
+  .lock-row button[type="submit"] {
     flex: none; height: 40px; padding: 0 16px; border: 0; border-radius: 8px;
     background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
   }
@@ -376,6 +391,14 @@
     });
   }
 
+  // 目のアイコン。上が「今は隠れている（押すと見える）」、下が「今は見えている」
+  const EYE_ICONS =
+    '<svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg>' +
+    '<svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M9.9 5.2A9.9 9.9 0 0 1 12 5c7 0 10.5 7 10.5 7a18 18 0 0 1-3.3 4.2M6.3 6.8A18 18 0 0 0 1.5 12S5 19 12 19a9.8 9.8 0 0 0 4.2-.9"/>' +
+    '<path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
+
   // 一度あけたリンクは、絞り込みを変えても開いたままにする（行番号 → URL）
   const unlocked = new Map();
 
@@ -456,7 +479,10 @@
             ${locked ? `<form class="lock" data-row="${esc(r._row)}">
               <p class="lock-note">この団体のリンクは、パスワードを知っている人だけが開けます。</p>
               <div class="lock-row">
-                <input type="password" name="pw" placeholder="パスワード" autocomplete="off" aria-label="パスワード">
+                <div class="pw-wrap">
+                  <input type="password" name="pw" placeholder="パスワード" autocomplete="off" aria-label="パスワード">
+                  <button type="button" class="pw-toggle" aria-pressed="false" aria-label="パスワードを表示する" title="パスワードを表示する">${EYE_ICONS}</button>
+                </div>
                 <button type="submit">リンクを表示</button>
               </div>
               <p class="lock-msg" role="status"></p>
@@ -503,13 +529,31 @@
   $("target").addEventListener("change", (e) => { state.target = e.target.value; render(); });
   $("resetAll").addEventListener("click", resetAll);
 
+  // 目のボタン：パスワードの表示／非表示を切り替える
+  $("list").addEventListener("click", (e) => {
+    const btn = e.target.closest(".pw-toggle");
+    if (!btn) return;
+    const input = btn.parentNode.querySelector("input[name=pw]");
+    if (!input) return;
+    const show = btn.getAttribute("aria-pressed") !== "true";
+    input.type = show ? "text" : "password";
+    btn.setAttribute("aria-pressed", String(show));
+    const label = show ? "パスワードを隠す" : "パスワードを表示する";
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("title", label);
+    input.focus();
+    // カーソルを末尾に戻す（type を変えると先頭に飛ぶブラウザがあるため）
+    const n = input.value.length;
+    try { input.setSelectionRange(n, n); } catch (err) { /* 一部ブラウザは未対応 */ }
+  });
+
   $("list").addEventListener("submit", (e) => {
     const form = e.target.closest("form.lock");
     if (!form) return;
     e.preventDefault();
     const row = Number(form.dataset.row);
     const input = form.querySelector("input[name=pw]");
-    const btn = form.querySelector("button");
+    const btn = form.querySelector('button[type="submit"]');
     const msg = form.querySelector(".lock-msg");
     if (!input.value) { msg.className = "lock-msg error"; msg.textContent = "パスワードを入力してください。"; return; }
 
