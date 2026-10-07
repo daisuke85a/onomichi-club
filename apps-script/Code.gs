@@ -12,9 +12,10 @@
 
 const SHEET_NAME = 'クラブ一覧';
 
-const HEADERS = ['公開', '種別', '種目', '名称', '参加対象', '対象学年', '費用', '活動日', '活動場所', '校区', '紹介', '連絡先', 'URL', 'URLパスワード'];
+const HEADERS = ['公開', '種別', '種目', '名称', '参加対象', '対象学年', '費用', '活動日', '活動場所', '校区', '紹介', '連絡先', 'URL', 'URLパスワード', '画像URL'];
 
 const PASSWORD_COL = 'URLパスワード';
+const IMAGE_COL = '画像URL';
 
 function doGet(e) {
   // ?health=1 … 自動の見張り（Health.gs）がデプロイ済みのページを外から確かめるための出口。
@@ -35,6 +36,29 @@ function doGet(e) {
     .setTitle('おのみち部活さがし')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * 画像URLを、そのまま <img src> に使える形に直す。
+ *
+ * Google ドライブの共有リンクは「ページを開くURL」であって画像そのものではないため、
+ * 直接貼っても表示されない。ファイルIDを取り出してサムネイル形式に組み直す。
+ * 外部サイトの画像URLはそのまま通す。
+ */
+function imageUrl_(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+
+  // ドライブの各種リンク形式からファイルIDを拾う
+  const m = s.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=)([A-Za-z0-9_-]{10,})/);
+  if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200';
+
+  // ファイルIDだけを貼られた場合
+  if (/^[A-Za-z0-9_-]{25,}$/.test(s)) return 'https://drive.google.com/thumbnail?id=' + s + '&sz=w1200';
+
+  // それ以外は http(s) のみ通す（javascript: などを画面に渡さない）
+  if (/^https?:\/\//i.test(s)) return s;
+  return '';
 }
 
 /** シートを読み、1行を1オブジェクトにして返す（内部用。パスワードを含むので外に出さない） */
@@ -71,6 +95,7 @@ function getClubs() {
       out['URL'] = '';
       out._locked = true;
     }
+    out[IMAGE_COL] = imageUrl_(obj[IMAGE_COL]);
     return out;
   });
 }
@@ -96,23 +121,43 @@ function getUrl(row, password) {
   return { ok: true, url: target['URL'] || '' };
 }
 
+// 列を足したときの説明書き（右上に小さな印が付き、マウスを乗せると出ます）
+const COLUMN_NOTES = {
+  'URLパスワード': 'ここに合言葉を入れると、その行の URL は合言葉を入力した人にだけ表示されます。空欄なら誰でも見られます。',
+  '画像URL': '活動の写真。Google ドライブの共有リンク（「リンクを知っている全員」に設定）か、外部サイトの画像URLを貼ってください。空欄なら写真なしで表示されます。',
+};
+
+const COLUMN_WIDTHS = { 'URLパスワード': 120, '画像URL': 240 };
+
 /**
- * 既に運用しているシートに「URLパスワード」列を足す（1回だけ手動で実行）。
- * setupSheet() を実行済みのシートで、あとからこの機能を使うとき用。
+ * 既に運用しているシートに、まだ無い列を右端に足す（手動で実行）。
+ * HEADERS に項目が増えたら、これを1回実行すれば追いつきます。
  */
-function addPasswordColumn() {
+function addMissingColumns() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(h => String(h).trim());
 
-  if (headers.indexOf(PASSWORD_COL) !== -1) {
-    throw new Error('「' + PASSWORD_COL + '」列はすでにあります。');
+  const missing = HEADERS.filter(h => headers.indexOf(h) === -1);
+  if (!missing.length) {
+    throw new Error('足りない列はありません。');
   }
 
-  const col = headers.length + 1;
-  sheet.getRange(1, col).setValue(PASSWORD_COL).setFontWeight('bold').setBackground('#DFECF2');
-  sheet.setColumnWidth(col, 120);
-  sheet.getRange(1, col).setNote('ここにパスワードを入れると、その行の URL はパスワードを入力した人にだけ表示されます。空欄なら誰でも見られます。');
+  let col = sheet.getLastColumn();
+  missing.forEach(name => {
+    col += 1;
+    const cell = sheet.getRange(1, col);
+    cell.setValue(name).setFontWeight('bold').setBackground('#DFECF2');
+    sheet.setColumnWidth(col, COLUMN_WIDTHS[name] || 160);
+    if (COLUMN_NOTES[name]) cell.setNote(COLUMN_NOTES[name]);
+  });
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('追加した列：' + missing.join('、'), 'おのみち部活さがし', 8);
+}
+
+/** 以前の名前。中身は addMissingColumns() と同じです */
+function addPasswordColumn() {
+  addMissingColumns();
 }
 
 /** 初回だけ手動で実行：シート・見出し・入力規則・サンプル行を作る */
@@ -129,10 +174,10 @@ function setupSheet() {
   sheet.setFrozenRows(1);
 
   const sample = [
-    [true, 'クラブ', 'バスケットボール', '尾道シーサイド・バスケットクラブ U15', '男子・女子', '中1〜中3', '月3,000円', '週2日（火・木 19:00〜21:00）', '長江中学校 体育館', '長江中学校', '部活動の受け皿として2026年春に発足。経験者も初心者も歓迎。', '担当：山本（070-0000-0001）', 'https://example.com/seaside-bb', ''],
-    [true, 'クラブ', '卓球', '尾道卓球クラブ', '男子・女子', '小5〜中3', '月2,000円', '週1日（土 9:00〜12:00）', '尾道市総合体育館 サブアリーナ', '久保中学校', 'ラケットは貸出あり。', '担当：佐藤', 'https://example.com/ono-tt-form', 'onomichi2026'],
-    [true, 'イベント', '体験会', 'バドミントン無料体験会', '男子・女子', '中1〜中3', '無料', '2026年10月25日（日）13:00〜15:00', '尾道市総合体育館', '全域', 'ラケット貸出あり。', '尾道市バドミントン協会', '', ''],
-    [false, 'クラブ', 'サッカー', '（非公開のテスト行）', '男子', '中1〜中3', '月6,000円', '週3日', 'びんご運動公園', '高西中学校', '「公開」のチェックを外すとサイトに出ません。', '', '', ''],
+    [true, 'クラブ', 'バスケットボール', '尾道シーサイド・バスケットクラブ U15', '男子・女子', '中1〜中3', '月3,000円', '週2日（火・木 19:00〜21:00）', '長江中学校 体育館', '長江中学校', '部活動の受け皿として2026年春に発足。経験者も初心者も歓迎。', '担当：山本（070-0000-0001）', 'https://example.com/seaside-bb', '', ''],
+    [true, 'クラブ', '卓球', '尾道卓球クラブ', '男子・女子', '小5〜中3', '月2,000円', '週1日（土 9:00〜12:00）', '尾道市総合体育館 サブアリーナ', '久保中学校', 'ラケットは貸出あり。', '担当：佐藤', 'https://example.com/ono-tt-form', 'onomichi2026', ''],
+    [true, 'イベント', '体験会', 'バドミントン無料体験会', '男子・女子', '中1〜中3', '無料', '2026年10月25日（日）13:00〜15:00', '尾道市総合体育館', '全域', 'ラケット貸出あり。', '尾道市バドミントン協会', '', '', ''],
+    [false, 'クラブ', 'サッカー', '（非公開のテスト行）', '男子', '中1〜中3', '月6,000円', '週3日', 'びんご運動公園', '高西中学校', '「公開」のチェックを外すとサイトに出ません。', '', '', '', ''],
   ];
   sheet.getRange(2, 1, sample.length, HEADERS.length).setValues(sample);
 
@@ -151,7 +196,13 @@ function setupSheet() {
     SpreadsheetApp.newDataValidation().requireValueInList(schools, true).setAllowInvalid(true).build());
 
   // 列幅
-  const widths = [50, 80, 120, 260, 90, 90, 120, 220, 220, 120, 360, 200, 240, 120];
+  const widths = [50, 80, 120, 260, 90, 90, 120, 220, 220, 120, 360, 200, 240, 120, 240];
   widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   sheet.getRange(2, 11, MAX, 1).setWrap(true);
+
+  // 分かりにくい列に説明書きを付ける
+  Object.keys(COLUMN_NOTES).forEach(name => {
+    const i = HEADERS.indexOf(name);
+    if (i !== -1) sheet.getRange(1, i + 1).setNote(COLUMN_NOTES[name]);
+  });
 }
