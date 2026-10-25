@@ -271,6 +271,11 @@
     width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
     color: var(--ink); font: inherit; font-size: 16px; padding: 9px 10px;
   }
+  /* :focus-visible はタップ由来のプログラム的フォーカスでは効かないため、
+     ここだけは :focus で枠線を出し、どこに入力するのかを必ず見せる */
+  .cf-form input[type="text"]:focus, .cf-form textarea:focus {
+    outline: 3px solid var(--focus); outline-offset: 2px; border-color: var(--focus);
+  }
   .cf-form textarea { min-height: 96px; resize: vertical; }
   .cf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .cf-send {
@@ -676,7 +681,12 @@
 
     btn.setAttribute("aria-expanded", "true");
     box.insertAdjacentHTML("beforeend", contactForm(btn.dataset.row, btn.dataset.type, 2)); // ボタンが出るのはパターン2だけ
-    const input = box.querySelector(".cf-form input[name=name]");
+
+    // スマホでは開いたフォームが画面の外に出ることがある。
+    // 画面に入るまでスクロールしてから、お名前に入力できる状態にする
+    const form = box.querySelector(".cf-form");
+    if (form) form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const input = form && form.querySelector("input[name=name]");
     if (input) input.focus({ preventScroll: true });
   });
 
