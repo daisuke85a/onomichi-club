@@ -44,7 +44,7 @@ function healthCheck() {
     if (!sheet) throw new Error('シートが見つかりません');
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(h => String(h).trim());
-    const required = HEADERS.filter(h => h !== PASSWORD_COL); // パスワード列は任意
+    const required = HEADERS.filter(h => OPTIONAL_COLS.indexOf(h) === -1); // 任意の列は除く
     const missing = required.filter(h => headers.indexOf(h) === -1);
     if (missing.length) problems.push('シートの見出しが足りません：' + missing.join('、'));
     notes.push('シートの見出し：' + headers.length + '列');
@@ -62,11 +62,15 @@ function healthCheck() {
     problems.push('データを組み立てられません：' + err.message);
   }
 
-  // --- 3. パスワード付きの行の URL が漏れていないか ---
+  // --- 3. 外に出してはいけないものが漏れていないか ---
   if (Array.isArray(rows)) {
     const leaked = rows.filter(r => r._locked && r['URL']);
     if (leaked.length) {
       problems.push('パスワードで保護しているはずの URL が外に出ています（' + leaked.length + '件）。すぐに連絡先に相談してください');
+    }
+    const leakedMail = rows.filter(r => r[CONTACT_COL]);
+    if (leakedMail.length) {
+      problems.push('団体の問い合わせ先メールが外に出ています（' + leakedMail.length + '件）。すぐに連絡先に相談してください');
     }
   }
 
