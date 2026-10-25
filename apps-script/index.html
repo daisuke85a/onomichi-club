@@ -267,6 +267,7 @@
     font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
     border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px; align-self: center;
   }
+  .cf-actions-label { justify-content: flex-end; }
   .cf-form {
     display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line);
     border-radius: 10px; background: var(--bg);
@@ -528,17 +529,31 @@
     apply: "希望の日程や、見学・体験どちらかをご記入ください",
   };
 
-  /** カード下部の「問い合わせる」「申し込む」ボタン。_form が 1 か 2 かで出し分ける */
+  /**
+   * カード下部の問い合わせ欄。_form が 1 か 2 かで出し分ける。
+   *
+   * パターン1：できることが1つしかないので、ボタンを挟まずフォームをそのまま出す
+   * パターン2：問い合わせか申し込みかを選んでもらうため、ボタンから開く
+   */
   function contactButtons(r) {
     if (!r._canContact) return "";
     const two = r._form === 2;
     const label = SHOW_PATTERN_LABEL ? `<span class="cf-pattern">パターン${two ? 2 : 1}</span>` : "";
+
+    if (!two) {
+      return `
+        <div class="cf">
+          ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
+          ${contactForm(r._row, "inquiry")}
+        </div>`;
+    }
+
     const btn = (type, cls) =>
       `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}" aria-expanded="false">${esc(FORM_TITLE[type])}</button>`;
     return `
       <div class="cf">
         <div class="cf-actions">
-          ${two ? btn("inquiry", "") + btn("apply", "primary") : btn("inquiry", "primary")}
+          ${btn("inquiry", "")}${btn("apply", "primary")}
           ${label}
         </div>
       </div>`;
