@@ -247,6 +247,47 @@
   .lock-msg { margin: 0; font-size: 12.5px; min-height: 1.3em; color: var(--muted); }
   .lock-msg.error { color: var(--event); }
 
+  /* ---- 問い合わせ・申し込み（試用中のA/B） ---- */
+  .cf { display: grid; gap: 8px; }
+  .cf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cf-open {
+    flex: 1 1 auto; min-width: 140px; height: 42px; padding: 0 16px;
+    border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--accent);
+    font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .cf-open.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .cf-open[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
+  .card.event .cf-open { border-color: var(--event); color: var(--event); }
+  .card.event .cf-open.primary { background: var(--event); color: #fff; }
+  .cf-pattern {
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
+    border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px; align-self: center;
+  }
+  .cf-form {
+    display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line);
+    border-radius: 10px; background: var(--bg);
+  }
+  .cf-form h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .cf-form label { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+  .cf-form input[type="text"], .cf-form textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+    color: var(--ink); font: inherit; font-size: 16px; padding: 9px 10px;
+  }
+  .cf-form textarea { min-height: 96px; resize: vertical; }
+  .cf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .cf-send {
+    height: 42px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink);
+    font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  .cf-send[disabled] { opacity: .55; cursor: default; }
+  .cf-note { margin: 0; font-size: 12px; color: var(--muted); }
+  .cf-msg { margin: 0; font-size: 13px; min-height: 1.3em; color: var(--muted); }
+  .cf-msg.error { color: var(--event); }
+  .cf-done {
+    margin: 0; padding: 12px; border-radius: 10px; background: var(--accent-soft);
+    color: var(--accent); font-size: 13.5px; font-weight: 700;
+  }
+
   .empty {
     text-align: center; padding: 40px 16px; color: var(--muted); background: var(--surface);
     border-radius: 12px; border: 1px dashed var(--line);
@@ -325,7 +366,7 @@
   const COL = {
     pub: "公開", kind: "種別", sport: "種目", name: "名称", target: "参加対象", grade: "対象学年",
     fee: "費用", days: "活動日", place: "活動場所", school: "校区", desc: "紹介", contact: "連絡先", url: "URL",
-    pw: "URLパスワード", img: "画像URL"
+    pw: "URLパスワード", img: "画像URL", mail: "問い合わせ先メール"
   };
 
   // ---- サンプルデータ（架空の団体です） ----
@@ -386,7 +427,10 @@
     return SAMPLE.filter(isPublic).map((r, i) => {
       const out = Object.assign({ _row: i + 2 }, r);
       delete out[COL.pw];
+      delete out[COL.mail];
       if (r[COL.pw]) { out[COL.url] = ""; out._locked = true; }
+      out._canContact = true;          // サンプルでは全団体で試せるようにする
+      out._form = (i % 2 === 0) ? 1 : 2; // 奇数番目=パターン1、偶数番目=パターン2
       return out;
     });
   }
@@ -401,6 +445,20 @@
 
   // 一度あけたリンクは、絞り込みを変えても開いたままにする（行番号 → URL）
   const unlocked = new Map();
+
+  /** 問い合わせ・申し込みを送る。{ok, message} を返す */
+  function sendContact(payload) {
+    if (window.google && google.script && google.script.run) {
+      return new Promise((resolve, reject) =>
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).submitContact(payload));
+    }
+    // ---- サンプル表示では送信せず、見た目だけ再現する ----
+    return new Promise((resolve) => setTimeout(() => resolve({
+      ok: true,
+      message: (payload.type === "apply" ? "お申し込みを送信しました。" : "お問い合わせを送信しました。")
+        + "団体から直接ご連絡があります。（サンプル表示のため、実際には送信していません）",
+    }), 600));
+  }
 
   /** パスワードと引き換えに URL を受け取る。{ok, url} を返す */
   function unlockUrl(row, password) {
@@ -448,6 +506,59 @@
     sel.value = state.school;
   }
 
+  // 試用中のA/B表示。どちらの形にするか決まったら false にしてください
+  const SHOW_PATTERN_LABEL = true;
+
+  const FORM_TITLE = {
+    inquiry: "この団体に問い合わせる",
+    apply: "見学・体験を申し込む",
+  };
+  const MESSAGE_LABEL = {
+    inquiry: "お問い合わせ内容",
+    apply: "申し込み内容",
+  };
+  const MESSAGE_HINT = {
+    inquiry: "聞きたいことをご記入ください（例：初心者でも参加できますか）",
+    apply: "希望の日程や、見学・体験どちらかをご記入ください",
+  };
+
+  /** カード下部の「問い合わせる」「申し込む」ボタン。_form が 1 か 2 かで出し分ける */
+  function contactButtons(r) {
+    if (!r._canContact) return "";
+    const two = r._form === 2;
+    const label = SHOW_PATTERN_LABEL ? `<span class="cf-pattern">パターン${two ? 2 : 1}</span>` : "";
+    const btn = (type, cls) =>
+      `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}" aria-expanded="false">${esc(FORM_TITLE[type])}</button>`;
+    return `
+      <div class="cf">
+        <div class="cf-actions">
+          ${two ? btn("inquiry", "") + btn("apply", "primary") : btn("inquiry", "primary")}
+          ${label}
+        </div>
+      </div>`;
+  }
+
+  /** 開いたときに差し込むフォーム本体 */
+  function contactForm(row, type) {
+    return `
+      <form class="cf-form" data-row="${esc(row)}" data-type="${esc(type)}" data-opened="${Date.now()}">
+        <h3>${esc(FORM_TITLE[type])}</h3>
+        <label>お名前
+          <input type="text" name="name" autocomplete="name" maxlength="100" required>
+        </label>
+        <label>ご連絡先（電話番号かメールアドレス）
+          <input type="text" name="contact" autocomplete="email" maxlength="200" required>
+        </label>
+        <label>${esc(MESSAGE_LABEL[type])}
+          <textarea name="message" maxlength="2000" required placeholder="${esc(MESSAGE_HINT[type])}"></textarea>
+        </label>
+        <div class="cf-hp" aria-hidden="true"><label>こちらは入力しないでください<input type="text" name="hp" tabindex="-1" autocomplete="off"></label></div>
+        <button type="submit" class="cf-send">${esc(type === "apply" ? "この内容で申し込む" : "この内容で問い合わせる")}</button>
+        <p class="cf-note">入力した内容は、この団体に直接メールで送られます。</p>
+        <p class="cf-msg" role="status"></p>
+      </form>`;
+  }
+
   function card(r) {
     const isEvent = r[COL.kind] === "イベント";
     const open = unlocked.has(r._row);
@@ -489,6 +600,7 @@
               </div>
               <p class="lock-msg" role="status"></p>
             </form>` : url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">公式サイト・申込み ↗</a>` : ""}
+            ${contactButtons(r)}
           </div>
         </details>
       </article>`;
@@ -530,6 +642,72 @@
   $("school").addEventListener("change", (e) => { state.school = e.target.value; render(); });
   $("target").addEventListener("change", (e) => { state.target = e.target.value; render(); });
   $("resetAll").addEventListener("click", resetAll);
+
+  // 「問い合わせる」「申し込む」ボタン：フォームを開閉する
+  $("list").addEventListener("click", (e) => {
+    const btn = e.target.closest(".cf-open");
+    if (!btn) return;
+    const box = btn.closest(".cf");
+    const open = btn.getAttribute("aria-expanded") === "true";
+
+    // 同じカードの他のボタンを閉じ、開いていたフォームを外す
+    box.querySelectorAll(".cf-open").forEach((b) => b.setAttribute("aria-expanded", "false"));
+    const existing = box.querySelector(".cf-form, .cf-done");
+    if (existing) existing.remove();
+
+    if (open) return; // 押したボタンが開いていたなら、閉じるだけ
+
+    btn.setAttribute("aria-expanded", "true");
+    box.insertAdjacentHTML("beforeend", contactForm(btn.dataset.row, btn.dataset.type));
+    const input = box.querySelector(".cf-form input[name=name]");
+    if (input) input.focus({ preventScroll: true });
+  });
+
+  // フォームの送信
+  $("list").addEventListener("submit", (e) => {
+    const form = e.target.closest("form.cf-form");
+    if (!form) return;
+    e.preventDefault();
+
+    const msg = form.querySelector(".cf-msg");
+    const send = form.querySelector(".cf-send");
+    const val = (n) => (form.querySelector(`[name=${n}]`).value || "").trim();
+
+    if (!val("name")) return fail(msg, "お名前を入力してください。");
+    if (!val("contact")) return fail(msg, "ご連絡先を入力してください。");
+    if (!val("message")) return fail(msg, MESSAGE_LABEL[form.dataset.type] + "を入力してください。");
+
+    send.disabled = true;
+    msg.className = "cf-msg";
+    msg.textContent = "送信しています…";
+
+    sendContact({
+      row: Number(form.dataset.row),
+      type: form.dataset.type,
+      name: val("name"),
+      contact: val("contact"),
+      message: val("message"),
+      hp: val("hp"),
+      openedAt: Number(form.dataset.opened),
+    }).then((res) => {
+      if (!res || !res.ok) {
+        send.disabled = false;
+        return fail(msg, (res && res.message) || "送信できませんでした。");
+      }
+      const box = form.closest(".cf");
+      box.querySelectorAll(".cf-open").forEach((b) => b.setAttribute("aria-expanded", "false"));
+      form.outerHTML = `<p class="cf-done" role="status">${esc(res.message)}</p>`;
+    }).catch((err) => {
+      send.disabled = false;
+      fail(msg, "送信できませんでした。時間をおいてお試しください。");
+      console.error(err);
+    });
+  });
+
+  function fail(msg, text) {
+    msg.className = "cf-msg error";
+    msg.textContent = text;
+  }
 
   // 画像が読み込めなかったら、枠ごと消して余白が残らないようにする
   // （error は上に伝わらないので capture で拾う）
