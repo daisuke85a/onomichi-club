@@ -248,8 +248,10 @@
   /* ---- 問い合わせ・申し込み（試用中のA/B） ---- */
   .cf { display: grid; gap: 8px; }
   .cf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* 幅が足りないときは横に詰めず、素直に縦へ折り返して全幅のボタンにする
+     （スマホで文字が潰れるのを避けるため） */
   .cf-open {
-    flex: 1 1 auto; min-width: 140px; height: 42px; padding: 0 16px;
+    flex: 1 1 200px; height: 44px; padding: 0 16px;
     border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--accent);
     font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
   }
@@ -259,8 +261,9 @@
   .card.event .cf-open.primary { background: var(--event); color: #fff; }
   .cf-pattern {
     font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
-    border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px; align-self: center;
+    border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px;
   }
+  /* 試用中の目印。ボタンと行を取り合わないよう、必ず単独の行に置く */
   .cf-actions-label { justify-content: flex-end; }
   .cf-form {
     display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line);
@@ -555,10 +558,8 @@
       `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}" aria-expanded="false">${esc(FORM_TITLE[type])}</button>`;
     return `
       <div class="cf">
-        <div class="cf-actions">
-          ${btn("inquiry", "")}${btn("apply", "primary")}
-          ${label}
-        </div>
+        ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
+        <div class="cf-actions">${btn("inquiry", "")}${btn("apply", "primary")}</div>
       </div>`;
   }
 
