@@ -518,10 +518,19 @@
     inquiry: "お問い合わせ内容",
     apply: "申し込み内容",
   };
+  // 入力欄の下書き文言。パターン1は申し込みもここに含めるため、
+  // 見学・体験の連絡もできることが伝わる書き方にしている
   const MESSAGE_HINT = {
     inquiry: "聞きたいことをご記入ください（例：初心者でも参加できますか）",
+    inquiryOnly: "ご質問や、見学・体験のご希望をご記入ください（例：土曜の練習を見学したいです）",
     apply: "希望の日程や、見学・体験どちらかをご記入ください",
   };
+
+  /** その団体のフォームに出す下書き文言を選ぶ */
+  function messageHint(type, form) {
+    if (type === "apply") return MESSAGE_HINT.apply;
+    return form === 1 ? MESSAGE_HINT.inquiryOnly : MESSAGE_HINT.inquiry;
+  }
 
   /**
    * カード下部の問い合わせ欄。_form が 1 か 2 かで出し分ける。
@@ -538,7 +547,7 @@
       return `
         <div class="cf">
           ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
-          ${contactForm(r._row, "inquiry")}
+          ${contactForm(r._row, "inquiry", 1)}
         </div>`;
     }
 
@@ -554,7 +563,7 @@
   }
 
   /** 開いたときに差し込むフォーム本体 */
-  function contactForm(row, type) {
+  function contactForm(row, type, form) {
     return `
       <form class="cf-form" data-row="${esc(row)}" data-type="${esc(type)}" data-opened="${Date.now()}">
         <h3>${esc(FORM_TITLE[type])}</h3>
@@ -565,7 +574,7 @@
           <input type="text" name="contact" autocomplete="email" maxlength="200" required>
         </label>
         <label>${esc(MESSAGE_LABEL[type])}
-          <textarea name="message" maxlength="2000" required placeholder="${esc(MESSAGE_HINT[type])}"></textarea>
+          <textarea name="message" maxlength="2000" required placeholder="${esc(messageHint(type, form))}"></textarea>
         </label>
         <div class="cf-hp" aria-hidden="true"><label>こちらは入力しないでください<input type="text" name="hp" tabindex="-1" autocomplete="off"></label></div>
         <button type="submit" class="cf-send">${esc(type === "apply" ? "この内容で申し込む" : "この内容で問い合わせる")}</button>
@@ -671,7 +680,7 @@
     if (open) return; // 押したボタンが開いていたなら、閉じるだけ
 
     btn.setAttribute("aria-expanded", "true");
-    box.insertAdjacentHTML("beforeend", contactForm(btn.dataset.row, btn.dataset.type));
+    box.insertAdjacentHTML("beforeend", contactForm(btn.dataset.row, btn.dataset.type, 2)); // ボタンが出るのはパターン2だけ
     const input = box.querySelector(".cf-form input[name=name]");
     if (input) input.focus({ preventScroll: true });
   });
