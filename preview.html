@@ -291,6 +291,19 @@
   }
   .cf-send[disabled] { opacity: .55; cursor: default; }
   .cf-note { margin: 0; font-size: 12px; color: var(--muted); }
+  .cf-privacy {
+    margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted);
+    padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line);
+  }
+  /* .cf-form label の display:grid より強く指定する必要がある */
+  .cf-form label.cf-agree {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px; color: var(--ink); cursor: pointer;
+    padding: 6px 2px; /* 指で押しやすいように上下に余白 */
+  }
+  .cf-form label.cf-agree input {
+    flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--accent); cursor: pointer;
+  }
   .cf-msg { margin: 0; font-size: 13px; min-height: 1.3em; color: var(--muted); }
   .cf-msg.error { color: var(--event); }
   .cf-done {
@@ -624,8 +637,12 @@
           <textarea name="message" maxlength="2000" required placeholder="${esc(messageHint(type, form))}"></textarea>
         </label>
         <div class="cf-hp" aria-hidden="true"><label>こちらは入力しないでください<input type="text" name="hp" tabindex="-1" autocomplete="off"></label></div>
+        <p class="cf-privacy">入力されたお名前・ご連絡先・内容は、この団体の運営者と本サイトの運営者にのみ通知されます。ほかの目的には使いません。</p>
+        <label class="cf-agree">
+          <input type="checkbox" name="agree">
+          <span>上記に同意します</span>
+        </label>
         <button type="submit" class="cf-send">${esc(type === "apply" ? "この内容で申し込む" : "この内容で問い合わせる")}</button>
-        <p class="cf-note">入力した内容は、この団体に直接メールで送られます。</p>
         <p class="cf-msg" role="status"></p>
       </form>`;
   }
@@ -771,6 +788,8 @@
     if (!val("name")) return fail(msg, "お名前を入力してください。");
     if (!val("contact")) return fail(msg, "ご連絡先を入力してください。");
     if (!val("message")) return fail(msg, MESSAGE_LABEL[form.dataset.type] + "を入力してください。");
+    const agree = form.querySelector("[name=agree]");
+    if (!agree.checked) { agree.focus(); return fail(msg, "「上記に同意します」にチェックを入れてください。"); }
 
     send.disabled = true;
     msg.className = "cf-msg";
@@ -783,6 +802,7 @@
       contact: val("contact"),
       message: val("message"),
       hp: val("hp"),
+      agree: form.querySelector("[name=agree]").checked,
       openedAt: Number(form.dataset.opened),
     }).then((res) => {
       if (!res || !res.ok) {

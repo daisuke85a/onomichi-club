@@ -9,7 +9,7 @@
  */
 
 const CONTACT_LOG_SHEET = '問い合わせ履歴';
-const CONTACT_LOG_HEADERS = ['受付日時', '種別', '団体名', '行', 'お名前', '連絡先', '内容', '送信先', '結果'];
+const CONTACT_LOG_HEADERS = ['受付日時', '種別', '団体名', '行', 'お名前', '連絡先', '内容', '送信先', '結果', '同意'];
 
 const CONTACT = {
   // 運用者にも控えを送る（試用中は true 推奨。届いているか確認できます）
@@ -57,6 +57,11 @@ function submitContact(p) {
   const contact = clean_(p.contact, CONTACT.maxContactLength);
   const message = clean_(p.message, CONTACT.maxMessageLength);
 
+  // 画面側のチェックは迂回できるため、同意はここでも必ず確認する
+  if (p.agree !== true) {
+    return { ok: false, message: '「上記に同意します」にチェックを入れてください。' };
+  }
+
   if (!name) return { ok: false, message: 'お名前を入力してください。' };
   if (!contact) return { ok: false, message: 'ご連絡先を入力してください。' };
   if (!message) return { ok: false, message: (type === 'apply' ? '申し込み内容' : 'お問い合わせ内容') + 'を入力してください。' };
@@ -103,6 +108,9 @@ function submitContact(p) {
       '■ 受付日時',
       stamp,
       '',
+      '■ 個人情報の取り扱い',
+      '送信者は「お名前・ご連絡先・内容を、この団体の運営者と本サイトの運営者にのみ通知する」ことに同意しています。',
+      '',
       '――――――',
       'このメールは、おのみち部活さがし のページから自動で送られています。',
       'お返事は、上のご連絡先に直接お願いします。',
@@ -123,7 +131,7 @@ function submitContact(p) {
       result = '失敗：' + String((err && err.message) || err);
     }
 
-    logContact_([stamp, label, clubName, club._row, name, contact, message, to, result]);
+    logContact_([stamp, label, clubName, club._row, name, contact, message, to, result, '同意あり']);
 
     if (result !== '送信') {
       return { ok: false, message: '送信できませんでした。お手数ですが、カードに書かれた連絡先に直接ご連絡ください。' };
@@ -173,8 +181,7 @@ function bump_(row) {
 function logContact_(values) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(CONTACT_LOG_SHEET);
-    if (!sheet) sheet = setupContactLog_();
+    const sheet = setupContactLog_(); // 無ければ作り、見出しが古ければ揃える
     sheet.appendRow(values);
   } catch (err) {
     // 記録に失敗しても、送信そのものは止めない
@@ -185,13 +192,22 @@ function logContact_(values) {
 function setupContactLog_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(CONTACT_LOG_SHEET);
-  if (sheet) return sheet;
+  if (sheet) {
+    // 見出しが増えたときは、足りないぶんを右端に足す
+    const have = sheet.getLastColumn();
+    if (have < CONTACT_LOG_HEADERS.length) {
+      const add = CONTACT_LOG_HEADERS.slice(have);
+      sheet.getRange(1, have + 1, 1, add.length).setValues([add])
+        .setFontWeight('bold').setBackground('#DFECF2');
+    }
+    return sheet;
+  }
 
   sheet = ss.insertSheet(CONTACT_LOG_SHEET);
   sheet.getRange(1, 1, 1, CONTACT_LOG_HEADERS.length).setValues([CONTACT_LOG_HEADERS])
     .setFontWeight('bold').setBackground('#DFECF2');
   sheet.setFrozenRows(1);
-  [140, 90, 220, 50, 120, 200, 360, 200, 90].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  [140, 90, 220, 50, 120, 200, 360, 200, 90, 70].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   sheet.getRange(1, 1).setNote('サイトから届いた問い合わせ・申し込みの記録です。メールが届かなかった場合も、ここには残ります。');
   return sheet;
 }
