@@ -144,6 +144,13 @@
   .chips button .n { color: var(--muted); font-size: 11px; margin-left: 3px; font-variant-numeric: tabular-nums; }
   .chips button[aria-pressed="true"] .n { color: inherit; }
 
+  .accessfilter { display: grid; gap: 4px; }
+  .accessfilter-label { font-size: 12.5px; color: var(--muted); }
+  .access-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .access-tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 8px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent); line-height: 1.6;
+  }
   .selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .selects label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
   .selects select {
@@ -334,6 +341,10 @@
       <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
     </div>
     <div class="chips" id="sportChips" role="group" aria-label="種目"></div>
+    <div class="accessfilter">
+      <span class="accessfilter-label">行き方</span>
+      <div class="chips" id="accessChips" role="group" aria-label="行き方でしぼりこむ"></div>
+    </div>
     <div class="selects">
       <label>校区（最寄りの中学校）
         <select id="school"><option value="">すべての校区</option></select>
@@ -375,7 +386,7 @@
   const COL = {
     pub: "公開", kind: "種別", sport: "種目", name: "名称", target: "参加対象", grade: "対象学年",
     fee: "費用", days: "活動日", place: "活動場所", school: "校区", desc: "紹介", contact: "連絡先", url: "URL",
-    pw: "URLパスワード", mail: "問い合わせ先メール"
+    pw: "URLパスワード", mail: "問い合わせ先メール", access: "アクセス"
   };
 
   // ---- サンプルデータ（架空の団体です） ----
@@ -395,7 +406,7 @@
   ];
 
   // ------------------------------------------------------------
-  const state = { kind: "", sport: "", school: "", target: "", q: "" };
+  const state = { kind: "", sport: "", school: "", target: "", q: "", access: [] };
   let rows = [];
 
   const $ = (id) => document.getElementById(id);
@@ -435,6 +446,21 @@
   function prepareSample() {
     return SAMPLE.filter(isPublic).map((r, i) => {
       const out = Object.assign({ _row: i + 2 }, r);
+      // ---- ここから下はサンプル表示専用。実データでは シート の値が入ります ----
+      const SAMPLE_ACCESS = [
+        "JR尾道駅からバス10分「長江口」下車 徒歩3分",
+        "JR尾道駅から徒歩15分",
+        "JR東尾道駅から徒歩20分",
+        "バス「市民病院前」下車 徒歩5分",
+        "JR尾道駅から徒歩8分",
+        "駐車場のみ（最寄りのバス停から徒歩25分）",
+      ];
+      out[COL.access] = r[COL.access] || SAMPLE_ACCESS[i % SAMPLE_ACCESS.length];
+      out._access = {
+        "公共交通で行ける": i % 3 !== 2,
+        "駐輪場あり": i % 2 === 0,
+        "駐車場あり": i % 4 === 1,
+      };
       delete out[COL.pw];
       delete out[COL.mail];
       if (r[COL.pw]) { out[COL.url] = ""; out._locked = true; }
@@ -493,7 +519,8 @@
       (!state.sport || r[COL.sport] === state.sport) &&
       (!state.school || r[COL.school] === state.school || r[COL.school] === "全域") &&
       (!state.target || (r[COL.target] || "").includes(state.target)) &&
-      (!q || [COL.name, COL.sport, COL.place, COL.desc, COL.school].some((k) => (r[k] || "").toLowerCase().includes(q)))
+      state.access.every((f) => r._access && r._access[f]) &&
+      (!q || [COL.name, COL.sport, COL.place, COL.desc, COL.school, COL.access].some((k) => (r[k] || "").toLowerCase().includes(q)))
     );
   }
 
@@ -506,6 +533,26 @@
     $("sportChips").innerHTML =
       `<button type="button" data-sport="" aria-pressed="${state.sport === ""}">すべての種目</button>` +
       sports.map(([s, n]) => `<button type="button" data-sport="${esc(s)}" aria-pressed="${state.sport === s}">${esc(s)}<span class="n">${n}</span></button>`).join("");
+  }
+
+  // 行き方のしぼりこみ。該当する団体がある条件だけを出す
+  const ACCESS_FLAGS = ["公共交通で行ける", "駐輪場あり", "駐車場あり"];
+
+  function renderAccessChips() {
+    const counts = new Map();
+    rows.forEach((r) => ACCESS_FLAGS.forEach((f) => {
+      if (r._access && r._access[f]) counts.set(f, (counts.get(f) || 0) + 1);
+    }));
+    const available = ACCESS_FLAGS.filter((f) => counts.has(f));
+
+    // 条件に合う団体が1つも無くなったら、その指定は外す
+    state.access = state.access.filter((f) => counts.has(f));
+
+    const box = $("accessChips");
+    box.closest(".accessfilter").hidden = available.length === 0;
+    box.innerHTML = available.map((f) =>
+      `<button type="button" data-access="${esc(f)}" aria-pressed="${state.access.indexOf(f) !== -1}">${esc(f)}<span class="n">${counts.get(f)}</span></button>`
+    ).join("");
   }
 
   function renderSchools() {
@@ -589,6 +636,16 @@
       </form>`;
   }
 
+  /** facts に並べる「行き方」。自由文と、該当する目印を出す */
+  function accessRow(r) {
+    const text = (r[COL.access] || "").trim();
+    const tags = ACCESS_FLAGS.filter((f) => r._access && r._access[f]);
+    if (!text && !tags.length) return "";
+    return `<div><dt>行き方</dt><dd>${text ? esc(text) : "—"}${
+      tags.length ? `<div class="access-tags">${tags.map((f) => `<span class="access-tag">${esc(f)}</span>`).join("")}</div>` : ""
+    }</dd></div>`;
+  }
+
   function card(r) {
     const isEvent = r[COL.kind] === "イベント";
     const open = unlocked.has(r._row);
@@ -608,6 +665,7 @@
           <div><dt>費用</dt><dd class="fee">${esc(r[COL.fee] || "—")}</dd></div>
           <div><dt>${isEvent ? "日時" : "活動日"}</dt><dd>${esc(r[COL.days] || "—")}</dd></div>
           <div><dt>場所</dt><dd>${esc(r[COL.place] || "—")}</dd></div>
+          ${accessRow(r)}
         </dl>
         <details>
           <summary><span class="open-label">くわしく見る</span><span class="close-label">閉じる</span></summary>
@@ -636,6 +694,7 @@
 
   function render() {
     renderChips();
+    renderAccessChips();
     const list = filtered();
     $("count").textContent = list.length;
     $("list").innerHTML = list.length
@@ -645,7 +704,7 @@
   }
 
   function resetAll() {
-    Object.assign(state, { kind: "", sport: "", school: "", target: "", q: "" });
+    Object.assign(state, { kind: "", sport: "", school: "", target: "", q: "", access: [] });
     $("q").value = ""; $("searchBox").classList.remove("has-value");
     $("school").value = ""; $("target").value = "";
     $("kindSeg").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.kind === "" ? "true" : "false"));
@@ -669,6 +728,15 @@
   });
   $("school").addEventListener("change", (e) => { state.school = e.target.value; render(); });
   $("target").addEventListener("change", (e) => { state.target = e.target.value; render(); });
+  $("accessChips").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-access]");
+    if (!b) return;
+    const f = b.dataset.access;
+    const i = state.access.indexOf(f);
+    if (i === -1) state.access.push(f); else state.access.splice(i, 1);
+    render();
+  });
+
   $("resetAll").addEventListener("click", resetAll);
 
   // 「問い合わせる」「申し込む」ボタン：フォームを開閉する
