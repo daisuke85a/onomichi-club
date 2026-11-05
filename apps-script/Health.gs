@@ -39,15 +39,13 @@ function healthCheck() {
   // --- 1. シートがあるか、見出しが揃っているか ---
   let rows = null;
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
-    if (!sheet) throw new Error('シートが見つかりません');
+    const sheet = getDataSheet_();
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(h => String(h).trim());
     const required = HEADERS.filter(h => OPTIONAL_COLS.indexOf(h) === -1); // 任意の列は除く
     const missing = required.filter(h => headers.indexOf(h) === -1);
     if (missing.length) problems.push('シートの見出しが足りません：' + missing.join('、'));
-    notes.push('シートの見出し：' + headers.length + '列');
+    notes.push('掲載シート：「' + sheet.getName() + '」（見出し ' + headers.length + '列）');
   } catch (err) {
     problems.push('シートを読めません：' + err.message);
   }

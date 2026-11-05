@@ -10,7 +10,15 @@
  *  5. Google サイト → 挿入 → Apps Script → このデプロイを選ぶ
  */
 
-const SHEET_NAME = 'クラブ一覧';
+// 掲載データのシート名。変えても動きますが（下の getDataSheet_ を参照）、
+// 新しく作るときはこの名前になります
+const SHEET_NAME = 'クラブ・イベント一覧';
+
+// シート名が変わっていても、この3つの見出しがあれば掲載データのシートと判断します
+const SHEET_KEY_HEADERS = ['公開', '種別', '名称'];
+
+// チェックボックスや入力規則をあらかじめ用意しておく行数
+const CHECKBOX_ROWS = 500;
 
 const HEADERS = ['公開', '種別', '種目', '名称', '参加対象', '対象学年', '費用', '活動日', '活動場所', '校区', '紹介', '連絡先', 'URL', 'URLパスワード', '問い合わせ先メール',
   'アクセス', '公共交通で行ける', '駐輪場あり', '駐車場あり'];
@@ -45,10 +53,38 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+/**
+ * 掲載データのシートを返す。
+ *
+ * 名前で見つからないときは、1行目の見出しで見分ける。
+ * 「1枚目のシート」を当てにすると、「引き継ぎ」など別のシートを
+ * 読んでしまうため、当て推量はせず、見つからなければ止める。
+ */
+function getDataSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  const byName = ss.getSheetByName(SHEET_NAME);
+  if (byName) return byName;
+
+  const found = ss.getSheets().filter(sh => {
+    const lastCol = sh.getLastColumn();
+    if (lastCol < SHEET_KEY_HEADERS.length) return false;
+    const headers = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0].map(h => String(h).trim());
+    return SHEET_KEY_HEADERS.every(h => headers.indexOf(h) !== -1);
+  });
+
+  if (found.length === 1) return found[0];
+  if (found.length > 1) {
+    throw new Error('掲載データらしいシートが' + found.length + '枚あります（'
+      + found.map(sh => sh.getName()).join('、') + '）。1枚だけにしてください。');
+  }
+  throw new Error('掲載データのシートが見つかりません。1行目に「'
+    + SHEET_KEY_HEADERS.join('」「') + '」の見出しがあるシートを用意してください。');
+}
+
 /** シートを読み、1行を1オブジェクトにして返す（内部用。パスワードを含むので外に出さない） */
 function readSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+  const sheet = getDataSheet_();
 
   // getDisplayValues: 日付や金額を、シートに表示されている文字のまま受け取る
   const values = sheet.getDataRange().getDisplayValues();
@@ -60,7 +96,10 @@ function readSheet_() {
       headers.forEach((h, j) => { obj[h] = String(row[j] || '').trim(); });
       return obj;
     })
-    .filter(obj => headers.some(h => obj[h] !== ''))
+    // 「名称」が入っている行だけを本物のデータとみなす。
+    // チェックボックスを入れた列は空行でも 'FALSE' が入るため、
+    // 「どれかの列が空でない」では空行を拾ってしまう
+    .filter(obj => String(obj['名称'] || '').trim() !== '')
     .filter(obj => String(obj['公開'] || '').toUpperCase() !== 'FALSE');
 }
 
@@ -142,8 +181,7 @@ const COLUMN_WIDTHS = { 'URLパスワード': 120, '問い合わせ先メール'
  * HEADERS に項目が増えたら、これを1回実行すれば追いつきます。
  */
 function addMissingColumns() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+  const sheet = getDataSheet_();
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(h => String(h).trim());
 
   const missing = HEADERS.filter(h => headers.indexOf(h) === -1);
@@ -160,7 +198,8 @@ function addMissingColumns() {
     if (COLUMN_NOTES[name]) cell.setNote(COLUMN_NOTES[name]);
     // 行き方の列はチェックボックスにする
     if (ACCESS_FLAGS.indexOf(name) !== -1) {
-      sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).insertCheckboxes();
+      const rows = Math.max(Math.min(sheet.getMaxRows() - 1, CHECKBOX_ROWS), 1);
+      sheet.getRange(2, col, rows, 1).insertCheckboxes();
     }
   });
 
@@ -193,7 +232,7 @@ function setupSheet() {
   ];
   sheet.getRange(2, 1, sample.length, HEADERS.length).setValues(sample);
 
-  const MAX = 500; // 入力規則をかけておく行数
+  const MAX = CHECKBOX_ROWS; // 入力規則をかけておく行数
   // 公開：チェックボックス
   sheet.getRange(2, 1, MAX, 1).insertCheckboxes();
   // 種別：プルダウン
