@@ -141,6 +141,9 @@
   .chips button[aria-pressed="true"] .n { color: inherit; }
 
   .accessfilter { display: grid; gap: 4px; }
+  /* 行き方は項目数が決まっているので、横スクロールにせず折り返して全部見せる
+     （横に流れると、画面の外にある条件に気づけない） */
+  #accessChips { flex-wrap: wrap; overflow-x: visible; }
   .accessfilter-label { font-size: 12.5px; color: var(--muted); }
   .access-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
   .access-tag {
