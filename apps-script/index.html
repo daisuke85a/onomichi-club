@@ -801,7 +801,13 @@
   // 条件のパネルは固定部の外にあるので、スクロールすれば自然に流れて消える。
   // 高さが変わらないため、表示がずれることがない。
   $("toggleFilters").addEventListener("click", () => {
-    $("filterPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    // そのまま先頭に合わせると、固定しているバーの裏にパネルの上端
+    //（すべて／クラブ／イベント）が隠れてしまう。
+    // バーの高さぶん手前で止めて、条件の1つ目から見えるようにする
+    const panel = $("filterPanel");
+    const barHeight = $("filters").getBoundingClientRect().height;
+    const top = window.scrollY + panel.getBoundingClientRect().top - barHeight - 8;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
   });
 
   // 条件が見えている間はボタンを出さない（すぐそこにあるものへの案内は不要）。
