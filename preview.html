@@ -172,7 +172,6 @@
     background: var(--surface); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
   }
   .filter-toggle svg { width: 16px; height: 16px; }
-  .filter-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .filter-count {
     display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px;
     border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 12px;
@@ -181,9 +180,7 @@
     border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
     text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap;
   }
-  .filter-panel { display: grid; gap: 10px; padding-top: 2px; }
-  /* display を指定した要素は hidden 属性だけでは隠れないので、明示する */
-  .filter-panel[hidden] { display: none; }
+  .filter-panel { display: grid; gap: 10px; padding: 10px 0 2px; }
   .filter-count[hidden], .filter-reset[hidden] { display: none; }
 
   .list { display: grid; gap: 12px; }
@@ -357,14 +354,14 @@
     <p class="notice" id="notice"></p>
   </header>
 
-  <section class="filters" aria-label="しぼりこみ">
+  <section class="filters" id="filters" aria-label="しぼりこみ">
     <div class="search" id="searchBox">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
       <input id="q" type="search" placeholder="団体名・種目・場所でさがす" autocomplete="off" aria-label="キーワード検索">
       <button type="button" id="clearQ" aria-label="検索語を消す">消す</button>
     </div>
     <div class="filterbar">
-      <button type="button" id="toggleFilters" class="filter-toggle" aria-expanded="false" aria-controls="filterPanel">
+      <button type="button" id="toggleFilters" class="filter-toggle">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
         <span>しぼりこむ</span><span class="filter-count" id="filterCount" hidden></span>
       </button>
@@ -372,7 +369,9 @@
       <button type="button" id="resetAll" class="filter-reset" hidden>条件をクリア</button>
     </div>
 
-    <div class="filter-panel" id="filterPanel" hidden>
+  </section>
+
+  <div class="filter-panel" id="filterPanel">
       <div class="seg" role="group" aria-label="種別" id="kindSeg">
         <button type="button" data-kind="" aria-pressed="true">すべて</button>
         <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
@@ -395,8 +394,7 @@
           </select>
         </label>
       </div>
-    </div>
-  </section>
+  </div>
 
   <div class="list" id="list"><div class="loading">読み込んでいます…</div></div>
 
@@ -744,7 +742,7 @@
     badge.hidden = n === 0;
     $("resetAll").hidden = n === 0;
     $("toggleFilters").setAttribute("aria-label",
-      n === 0 ? "しぼりこむ" : "しぼりこむ（" + n + "件の条件を適用中）");
+      n === 0 ? "しぼりこみの条件へ移動" : "しぼりこみの条件へ移動（" + n + "件の条件を適用中）");
   }
 
   function render() {
@@ -793,11 +791,11 @@
     render();
   });
 
+  // 条件のパネルは固定部の外にあるので、スクロールすれば自然に流れて消える。
+  // 高さが変わらないため、表示がずれることがない。
+  // ボタンは、流れて見えなくなった条件のところへ戻るためのもの。
   $("toggleFilters").addEventListener("click", () => {
-    const btn = $("toggleFilters");
-    const open = btn.getAttribute("aria-expanded") === "true";
-    btn.setAttribute("aria-expanded", String(!open));
-    $("filterPanel").hidden = open;
+    $("filterPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
 
   $("resetAll").addEventListener("click", resetAll);
