@@ -164,6 +164,7 @@
   /* 常に見えている1行。ここだけを固定し、条件そのものは折りたたむ */
   .filterbar {
     display: flex; align-items: center; gap: 10px;
+    min-height: 38px; /* ボタンの出し入れで固定部の高さが変わらないように */
     font-size: 13px; color: var(--muted);
   }
   .filterbar-result { margin-left: auto; white-space: nowrap; }
@@ -185,7 +186,7 @@
     text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap;
   }
   .filter-panel { display: grid; gap: 10px; padding: 10px 0 2px; }
-  .filter-count[hidden], .filter-reset[hidden] { display: none; }
+  .filter-count[hidden], .filter-reset[hidden], .filter-toggle[hidden] { display: none; }
 
   .list { display: grid; gap: 12px; }
 
@@ -367,9 +368,9 @@
       <button type="button" id="clearQ" aria-label="検索語を消す">消す</button>
     </div>
     <div class="filterbar">
-      <button type="button" id="toggleFilters" class="filter-toggle">
+      <button type="button" id="toggleFilters" class="filter-toggle" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
-        <span>しぼりこむ</span><span class="filter-count" id="filterCount" hidden></span>
+        <span>検索条件を見る</span><span class="filter-count" id="filterCount" hidden></span>
       </button>
       <span class="filterbar-result"><strong id="count">–</strong> 件</span>
       <button type="button" id="resetAll" class="filter-reset" hidden>条件をクリア</button>
@@ -748,7 +749,7 @@
     badge.hidden = n === 0;
     $("resetAll").hidden = n === 0;
     $("toggleFilters").setAttribute("aria-label",
-      n === 0 ? "しぼりこみの条件へ移動" : "しぼりこみの条件へ移動（" + n + "件の条件を適用中）");
+      n === 0 ? "検索条件を見る" : "検索条件を見る（" + n + "件の条件を適用中）");
   }
 
   function render() {
@@ -799,10 +800,19 @@
 
   // 条件のパネルは固定部の外にあるので、スクロールすれば自然に流れて消える。
   // 高さが変わらないため、表示がずれることがない。
-  // ボタンは、流れて見えなくなった条件のところへ戻るためのもの。
   $("toggleFilters").addEventListener("click", () => {
-    $("filterPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    $("filterPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   });
+
+  // 条件が見えている間はボタンを出さない（すぐそこにあるものへの案内は不要）。
+  // 流れて見えなくなったときだけ出す。
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(([e]) => {
+      $("toggleFilters").hidden = e.isIntersecting;
+    }, { threshold: 0 }).observe($("filterPanel"));
+  } else {
+    $("toggleFilters").hidden = false; // 判定できない環境では常に出す
+  }
 
   $("resetAll").addEventListener("click", resetAll);
 
