@@ -185,7 +185,11 @@
     border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
     text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap;
   }
-  .filter-panel { display: grid; gap: 10px; padding: 10px 0 2px; }
+  .filter-panel {
+    display: grid; gap: 10px;
+    padding: 10px 0 16px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--line); /* 条件の終わりと検索結果の始まりを分ける */
+  }
   .filter-count[hidden], .filter-reset[hidden], .filter-toggle[hidden] { display: none; }
 
   .list { display: grid; gap: 12px; }
