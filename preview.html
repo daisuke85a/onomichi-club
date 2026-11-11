@@ -467,7 +467,7 @@
       ];
       out[COL.access] = r[COL.access] || SAMPLE_ACCESS[i % SAMPLE_ACCESS.length];
       out._access = {
-        "公共交通で行ける": i % 3 !== 2,
+        "駅・バス停・渡船場から徒歩10分以内": i % 3 !== 2,
         "駐輪場あり": i % 2 === 0,
         "駐車場あり": i % 4 === 1,
       };
@@ -546,7 +546,7 @@
   }
 
   // 行き方のしぼりこみ。該当する団体がある条件だけを出す
-  const ACCESS_FLAGS = ["公共交通で行ける", "駐輪場あり", "駐車場あり"];
+  const ACCESS_FLAGS = ["駅・バス停・渡船場から徒歩10分以内", "駐輪場あり", "駐車場あり"];
 
   function renderAccessChips() {
     const counts = new Map();
