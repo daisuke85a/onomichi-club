@@ -93,7 +93,7 @@
   .filters {
     position: sticky; top: 0; z-index: 5;
     background: var(--bg);
-    padding: 12px 0 10px; margin: 8px -16px 0; padding-left: 16px; padding-right: 16px;
+    padding: 10px 16px; margin: 8px -16px 0;
     border-bottom: 1px solid var(--line);
     display: grid; gap: 10px;
   }
@@ -157,16 +157,34 @@
     background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; padding: 0 8px;
   }
 
-  /* ---------- results ---------- */
-  .resultbar {
-    display: flex; align-items: baseline; justify-content: space-between;
-    padding: 12px 0 8px; font-size: 13px; color: var(--muted);
+  /* 常に見えている1行。ここだけを固定し、条件そのものは折りたたむ */
+  .filterbar {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--muted);
   }
-  .resultbar strong { color: var(--ink); font-size: 18px; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
-  .resultbar button {
+  .filterbar-result { margin-left: auto; white-space: nowrap; }
+  .filterbar-result strong {
+    color: var(--ink); font-size: 18px; font-family: var(--font-display); font-variant-numeric: tabular-nums;
+  }
+  .filter-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--surface); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
+  .filter-toggle svg { width: 16px; height: 16px; }
+  .filter-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .filter-count {
+    display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 12px;
+  }
+  .filter-reset {
     border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
-    text-decoration: underline; text-underline-offset: 3px; padding: 0;
+    text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap;
   }
+  .filter-panel { display: grid; gap: 10px; padding-top: 2px; }
+  /* display を指定した要素は hidden 属性だけでは隠れないので、明示する */
+  .filter-panel[hidden] { display: none; }
+  .filter-count[hidden], .filter-reset[hidden] { display: none; }
 
   .list { display: grid; gap: 12px; }
 
@@ -345,34 +363,40 @@
       <input id="q" type="search" placeholder="団体名・種目・場所でさがす" autocomplete="off" aria-label="キーワード検索">
       <button type="button" id="clearQ" aria-label="検索語を消す">消す</button>
     </div>
-    <div class="seg" role="group" aria-label="種別" id="kindSeg">
-      <button type="button" data-kind="" aria-pressed="true">すべて</button>
-      <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
-      <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
+    <div class="filterbar">
+      <button type="button" id="toggleFilters" class="filter-toggle" aria-expanded="false" aria-controls="filterPanel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
+        <span>しぼりこむ</span><span class="filter-count" id="filterCount" hidden></span>
+      </button>
+      <span class="filterbar-result"><strong id="count">–</strong> 件</span>
+      <button type="button" id="resetAll" class="filter-reset" hidden>条件をクリア</button>
     </div>
-    <div class="chips" id="sportChips" role="group" aria-label="種目"></div>
-    <div class="accessfilter">
-      <span class="accessfilter-label">行き方</span>
-      <div class="chips" id="accessChips" role="group" aria-label="行き方でしぼりこむ"></div>
-    </div>
-    <div class="selects">
-      <label>校区（最寄りの中学校）
-        <select id="school"><option value="">すべての校区</option></select>
-      </label>
-      <label>参加できる人
-        <select id="target">
-          <option value="">だれでも</option>
-          <option value="男子">男子が参加できる</option>
-          <option value="女子">女子が参加できる</option>
-        </select>
-      </label>
+
+    <div class="filter-panel" id="filterPanel" hidden>
+      <div class="seg" role="group" aria-label="種別" id="kindSeg">
+        <button type="button" data-kind="" aria-pressed="true">すべて</button>
+        <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
+        <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
+      </div>
+      <div class="chips" id="sportChips" role="group" aria-label="種目"></div>
+      <div class="accessfilter">
+        <span class="accessfilter-label">行き方</span>
+        <div class="chips" id="accessChips" role="group" aria-label="行き方でしぼりこむ"></div>
+      </div>
+      <div class="selects">
+        <label>校区（最寄りの中学校）
+          <select id="school"><option value="">すべての校区</option></select>
+        </label>
+        <label>参加できる人
+          <select id="target">
+            <option value="">だれでも</option>
+            <option value="男子">男子が参加できる</option>
+            <option value="女子">女子が参加できる</option>
+          </select>
+        </label>
+      </div>
     </div>
   </section>
-
-  <div class="resultbar">
-    <span><strong id="count">–</strong> 件</span>
-    <button type="button" id="resetAll">条件をクリア</button>
-  </div>
 
   <div class="list" id="list"><div class="loading">読み込んでいます…</div></div>
 
@@ -706,9 +730,27 @@
       </article>`;
   }
 
+  /** 適用中の条件の数。検索語も1つと数える */
+  function activeCount() {
+    return (state.kind ? 1 : 0) + (state.sport ? 1 : 0) + (state.school ? 1 : 0)
+      + (state.target ? 1 : 0) + (state.q.trim() ? 1 : 0) + state.access.length;
+  }
+
+  /** しぼりこみボタンのバッジと「条件をクリア」の出し入れ */
+  function renderFilterBar() {
+    const n = activeCount();
+    const badge = $("filterCount");
+    badge.textContent = n;
+    badge.hidden = n === 0;
+    $("resetAll").hidden = n === 0;
+    $("toggleFilters").setAttribute("aria-label",
+      n === 0 ? "しぼりこむ" : "しぼりこむ（" + n + "件の条件を適用中）");
+  }
+
   function render() {
     renderChips();
     renderAccessChips();
+    renderFilterBar();
     const list = filtered();
     $("count").textContent = list.length;
     $("list").innerHTML = list.length
@@ -749,6 +791,13 @@
     const i = state.access.indexOf(f);
     if (i === -1) state.access.push(f); else state.access.splice(i, 1);
     render();
+  });
+
+  $("toggleFilters").addEventListener("click", () => {
+    const btn = $("toggleFilters");
+    const open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", String(!open));
+    $("filterPanel").hidden = open;
   });
 
   $("resetAll").addEventListener("click", resetAll);
