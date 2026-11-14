@@ -411,7 +411,6 @@
         <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
         <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
       </div>
-      <div class="chips" id="sportChips" role="group" aria-label="種目"></div>
       <div class="accessfilter">
         <span class="accessfilter-label">行き方</span>
         <div class="chips" id="accessChips" role="group" aria-label="行き方でしぼりこむ"></div>
@@ -494,7 +493,7 @@
   ];
 
   // ------------------------------------------------------------
-  const state = { kind: "", sport: "", school: "", target: "", q: "", access: [] };
+  const state = { kind: "", school: "", target: "", q: "", access: [] };
   let rows = [];
 
   const $ = (id) => document.getElementById(id);
@@ -604,23 +603,11 @@
     const q = state.q.trim().toLowerCase();
     return rows.filter((r) =>
       (!state.kind || r[COL.kind] === state.kind) &&
-      (!state.sport || r[COL.sport] === state.sport) &&
       (!state.school || r[COL.school] === state.school || r[COL.school] === "全域") &&
       (!state.target || (r[COL.target] || "").includes(state.target)) &&
       state.access.every((f) => r._access && r._access[f]) &&
       (!q || [COL.name, COL.sport, COL.place, COL.desc, COL.school, COL.access].some((k) => (r[k] || "").toLowerCase().includes(q)))
     );
-  }
-
-  function renderChips() {
-    const base = rows.filter((r) => !state.kind || r[COL.kind] === state.kind);
-    const counts = new Map();
-    base.forEach((r) => { const s = r[COL.sport]; if (s) counts.set(s, (counts.get(s) || 0) + 1); });
-    const sports = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"));
-    if (state.sport && !counts.has(state.sport)) state.sport = "";
-    $("sportChips").innerHTML =
-      `<button type="button" data-sport="" aria-pressed="${state.sport === ""}">すべての種目</button>` +
-      sports.map(([s, n]) => `<button type="button" data-sport="${esc(s)}" aria-pressed="${state.sport === s}">${esc(s)}<span class="n">${n}</span></button>`).join("");
   }
 
   // 行き方のしぼりこみ。該当する団体がある条件だけを出す
@@ -779,7 +766,7 @@
 
   /** 適用中の条件の数。検索語も1つと数える */
   function activeCount() {
-    return (state.kind ? 1 : 0) + (state.sport ? 1 : 0) + (state.school ? 1 : 0)
+    return (state.kind ? 1 : 0) + (state.school ? 1 : 0)
       + (state.target ? 1 : 0) + (state.q.trim() ? 1 : 0) + state.access.length;
   }
 
@@ -795,7 +782,6 @@
   }
 
   function render() {
-    renderChips();
     renderAccessChips();
     renderFilterBar();
     const list = filtered();
@@ -807,7 +793,7 @@
   }
 
   function resetAll() {
-    Object.assign(state, { kind: "", sport: "", school: "", target: "", q: "", access: [] });
+    Object.assign(state, { kind: "", school: "", target: "", q: "", access: [] });
     $("q").value = ""; $("searchBox").classList.remove("has-value");
     $("school").value = ""; $("target").value = "";
     $("kindSeg").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.kind === "" ? "true" : "false"));
@@ -824,10 +810,6 @@
     state.kind = b.dataset.kind;
     $("kindSeg").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
     render();
-  });
-  $("sportChips").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    state.sport = b.dataset.sport; render();
   });
   $("school").addEventListener("change", (e) => { state.school = e.target.value; render(); });
   $("target").addEventListener("change", (e) => { state.target = e.target.value; render(); });
