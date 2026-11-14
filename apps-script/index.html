@@ -647,26 +647,45 @@
   // 試用中のA/B表示。どちらの形にするか決まったら false にしてください
   const SHOW_PATTERN_LABEL = true;
 
-  const FORM_TITLE = {
-    inquiry: "この団体に問い合わせる",
-    apply: "見学・体験を申し込む",
-  };
   const MESSAGE_LABEL = {
     inquiry: "お問い合わせ内容",
     apply: "申し込み内容",
   };
+
+  function isEvent_(r) { return r[COL.kind] === "イベント"; }
+
+  /**
+   * ボタンと見出しの文言。クラブとイベントで言い方を変える。
+   * クラブは「継続して通う場所」、イベントは「その日に参加するもの」で、
+   * 見学・体験という言い方が噛み合わないため。
+   */
+  function formTitle(r, type) {
+    if (type === "apply") {
+      return isEvent_(r) ? "このイベントに申し込む" : "見学・体験を申し込む";
+    }
+    return isEvent_(r) ? "このイベントについて問い合わせる" : "この団体に問い合わせる";
+  }
+
   // 入力欄の下書き文言。パターン1は申し込みもここに含めるため、
-  // 見学・体験の連絡もできることが伝わる書き方にしている
+  // 参加・見学の連絡もできることが伝わる書き方にしている
   const MESSAGE_HINT = {
-    inquiry: "聞きたいことをご記入ください（例：初心者でも参加できますか）",
-    inquiryOnly: "ご質問や、見学・体験のご希望をご記入ください（例：土曜の練習を見学したいです）",
-    apply: "希望の日程や、見学・体験どちらかをご記入ください",
+    club: {
+      inquiry: "聞きたいことをご記入ください（例：初心者でも参加できますか）",
+      inquiryOnly: "ご質問や、見学・体験のご希望をご記入ください（例：土曜の練習を見学したいです）",
+      apply: "希望の日程や、見学・体験どちらかをご記入ください",
+    },
+    event: {
+      inquiry: "聞きたいことをご記入ください（例：当日の持ち物はありますか）",
+      inquiryOnly: "ご質問や、参加のご希望をご記入ください（例：参加したいです／持ち物はありますか）",
+      apply: "参加する人の学年や人数など、必要なことをご記入ください",
+    },
   };
 
-  /** その団体のフォームに出す下書き文言を選ぶ */
-  function messageHint(type, form) {
-    if (type === "apply") return MESSAGE_HINT.apply;
-    return form === 1 ? MESSAGE_HINT.inquiryOnly : MESSAGE_HINT.inquiry;
+  /** その団体・イベントのフォームに出す下書き文言を選ぶ */
+  function messageHint(r, type) {
+    const set = isEvent_(r) ? MESSAGE_HINT.event : MESSAGE_HINT.club;
+    if (type === "apply") return set.apply;
+    return r._form === 1 ? set.inquiryOnly : set.inquiry;
   }
 
   /**
@@ -681,7 +700,7 @@
     const two = r._form === 2;
     const label = SHOW_PATTERN_LABEL ? `<span class="cf-pattern">パターン${two ? 2 : 1}</span>` : "";
     const btn = (type, cls) =>
-      `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}">${esc(FORM_TITLE[type])}</button>`;
+      `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}">${esc(formTitle(r, type))}</button>`;
     return `
       <div class="cf">
         ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
@@ -694,7 +713,7 @@
     return `
       <form class="cf-form" data-row="${esc(r._row)}" data-type="${esc(type)}" data-opened="${Date.now()}">
         <p class="cf-for">${esc(r[COL.name])}</p>
-        <h2 class="cf-title">${esc(FORM_TITLE[type])}</h2>
+        <h2 class="cf-title">${esc(formTitle(r, type))}</h2>
         <label>お名前
           <input type="text" name="name" autocomplete="name" maxlength="100" required>
         </label>
@@ -702,7 +721,7 @@
           <input type="text" name="contact" autocomplete="email" maxlength="200" required>
         </label>
         <label>${esc(MESSAGE_LABEL[type])}
-          <textarea name="message" maxlength="2000" required placeholder="${esc(messageHint(type, r._form))}"></textarea>
+          <textarea name="message" maxlength="2000" required placeholder="${esc(messageHint(r, type))}"></textarea>
         </label>
         <div class="cf-hp" aria-hidden="true"><label>こちらは入力しないでください<input type="text" name="hp" tabindex="-1" autocomplete="off"></label></div>
         <p class="cf-privacy">入力されたお名前・ご連絡先・内容は、この団体の運営者と本サイトの運営者にのみ通知されます。ほかの目的には使いません。</p>
