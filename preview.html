@@ -204,7 +204,6 @@
     background: var(--accent-soft); color: var(--accent); line-height: 1.6;
   }
   .tag.kind-event { background: var(--event-soft); color: var(--event); }
-  .tag.target { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 400; }
   .card h2 {
     font-family: var(--font-display); font-weight: 700; font-size: 18px; line-height: 1.35;
     margin: 0 0 10px; text-wrap: balance;
@@ -731,7 +730,6 @@
         <div class="card-head">
           <span class="tag${isEvent ? " kind-event" : ""}">${esc(isEvent ? "イベント" : r[COL.sport])}</span>
           ${isEvent && r[COL.sport] ? `<span class="tag">${esc(r[COL.sport])}</span>` : ""}
-          ${r[COL.target] ? `<span class="tag target">${esc(r[COL.target])}</span>` : ""}
         </div>
         <h2>${esc(r[COL.name])}</h2>
         <dl class="facts">
