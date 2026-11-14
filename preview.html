@@ -181,12 +181,15 @@
     border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
     text-decoration: underline; text-underline-offset: 3px; padding: 0; white-space: nowrap;
   }
+  /* display を指定した要素は hidden 属性だけでは隠れないので明示する */
+  .filter-panel[hidden] { display: none; }
   .filter-panel {
     display: grid; gap: 10px;
     padding: 10px 0 16px; margin-bottom: 16px;
     border-bottom: 1px solid var(--line); /* 条件の終わりと検索結果の始まりを分ける */
   }
-  .filter-count[hidden], .filter-reset[hidden], .filter-toggle[hidden] { display: none; }
+  .filter-count[hidden], .filter-reset[hidden] { display: none; }
+  .filter-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
   .list { display: grid; gap: 12px; }
 
@@ -384,7 +387,6 @@
   <header class="hero">
     <p class="eyebrow">尾道市 中学生向け ・ 学校の外で活動できる場所</p>
     <h1>土日に、<em>やりたいこと</em>を続けられる場所さがし</h1>
-    <p class="lede">市内のクラブ・教室・体験イベントをまとめています。種目や校区でしぼりこんで、気になる団体には直接お問い合わせください。</p>
     <p class="notice" id="notice"></p>
   </header>
 
@@ -395,9 +397,9 @@
       <button type="button" id="clearQ" aria-label="検索語を消す">消す</button>
     </div>
     <div class="filterbar">
-      <button type="button" id="toggleFilters" class="filter-toggle" hidden>
+      <button type="button" id="toggleFilters" class="filter-toggle" aria-expanded="false" aria-controls="filterPanel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
-        <span>検索条件を見る</span><span class="filter-count" id="filterCount" hidden></span>
+        <span id="toggleFiltersText">条件でしぼりこむ</span><span class="filter-count" id="filterCount" hidden></span>
       </button>
       <span class="filterbar-result"><strong id="count">–</strong> 件</span>
       <button type="button" id="resetAll" class="filter-reset" hidden>条件をクリア</button>
@@ -405,7 +407,7 @@
 
   </section>
 
-  <div class="filter-panel" id="filterPanel">
+  <div class="filter-panel" id="filterPanel" hidden>
       <div class="seg" role="group" aria-label="種別" id="kindSeg">
         <button type="button" data-kind="" aria-pressed="true">すべて</button>
         <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
@@ -778,7 +780,7 @@
     badge.hidden = n === 0;
     $("resetAll").hidden = n === 0;
     $("toggleFilters").setAttribute("aria-label",
-      n === 0 ? "検索条件を見る" : "検索条件を見る（" + n + "件の条件を適用中）");
+      n === 0 ? "" : n + "件の条件を適用中");
   }
 
   function render() {
@@ -824,24 +826,49 @@
 
   // 条件のパネルは固定部の外にあるので、スクロールすれば自然に流れて消える。
   // 高さが変わらないため、表示がずれることがない。
-  $("toggleFilters").addEventListener("click", () => {
+  // 条件パネルは閉じた状態で始める。最初の画面は結果を見せることを優先する。
+  //
+  // ボタンの役目は、そのときの状態で変わる：
+  //   閉じている         → 開いて、条件のところまで連れていく
+  //   開いていて見えている → 閉じる
+  //   開いているが画面外   → 条件のところまで連れていく（閉じない）
+  let panelOnScreen = false;
+
+  function scrollToPanel() {
     // そのまま先頭に合わせると、固定しているバーの裏にパネルの上端
     //（すべて／クラブ／イベント）が隠れてしまう。
     // バーの高さぶん手前で止めて、条件の1つ目から見えるようにする
-    const panel = $("filterPanel");
     const barHeight = $("filters").getBoundingClientRect().height;
-    const top = window.scrollY + panel.getBoundingClientRect().top - barHeight - 8;
+    const top = window.scrollY + $("filterPanel").getBoundingClientRect().top - barHeight - 8;
     window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+  }
+
+  function updateToggleLabel() {
+    const open = !$("filterPanel").hidden;
+    $("toggleFiltersText").textContent =
+      !open ? "条件でしぼりこむ" : (panelOnScreen ? "条件をとじる" : "検索条件を見る");
+    $("toggleFilters").setAttribute("aria-expanded", String(open));
+  }
+
+  $("toggleFilters").addEventListener("click", () => {
+    const panel = $("filterPanel");
+    if (panel.hidden) {
+      panel.hidden = false;
+      updateToggleLabel();
+      scrollToPanel();
+    } else if (panelOnScreen) {
+      panel.hidden = true;
+      updateToggleLabel();
+    } else {
+      scrollToPanel();
+    }
   });
 
-  // 条件が見えている間はボタンを出さない（すぐそこにあるものへの案内は不要）。
-  // 流れて見えなくなったときだけ出す。
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(([e]) => {
-      $("toggleFilters").hidden = e.isIntersecting;
+      panelOnScreen = e.isIntersecting;
+      updateToggleLabel();
     }, { threshold: 0 }).observe($("filterPanel"));
-  } else {
-    $("toggleFilters").hidden = false; // 判定できない環境では常に出す
   }
 
   $("resetAll").addEventListener("click", resetAll);
