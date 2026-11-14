@@ -276,7 +276,7 @@
   .lock-msg.error { color: var(--event); }
 
   /* ---- 問い合わせ・申し込み（試用中のA/B） ---- */
-  .cf { display: grid; gap: 8px; }
+  .cf { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
   .cf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   /* 幅が足りないときは横に詰めず、素直に縦へ折り返して全幅のボタンにする
      （スマホで文字が潰れるのを避けるため） */
@@ -333,6 +333,34 @@
   }
   .cf-msg { margin: 0; font-size: 13px; min-height: 1.3em; color: var(--muted); }
   .cf-msg.error { color: var(--event); }
+
+  /* ---- 入力画面・完了画面 ---- */
+  /* display を指定した要素は hidden 属性だけでは隠れないので明示する */
+  .screen[hidden], #screenList[hidden] { display: none; }
+  .screen { display: grid; gap: 14px; padding: 16px 0 32px; }
+  .screen-back {
+    display: inline-flex; align-items: center; gap: 4px; justify-self: start;
+    height: 40px; padding: 0 12px 0 6px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .screen-back svg { width: 20px; height: 20px; }
+  .cf-for { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .cf-title { margin: 0 0 2px; font-size: 20px; font-family: var(--font-display); color: var(--ink); }
+  #screenForm .cf-form { border: 0; background: transparent; padding: 0; gap: 14px; }
+
+  .done { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 40px 8px; }
+  .done-mark {
+    display: grid; place-items: center; width: 64px; height: 64px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); margin-bottom: 4px;
+  }
+  .done-mark svg { width: 32px; height: 32px; }
+  .done h2 { margin: 0; font-size: 20px; font-family: var(--font-display); color: var(--ink); }
+  .done p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.7; }
+  .done-club { font-weight: 700; color: var(--ink) !important; }
+  .done-back {
+    margin-top: 12px; height: 46px; padding: 0 28px; border: 0; border-radius: 10px;
+    background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+  }
   .cf-done {
     margin: 0; padding: 12px; border-radius: 10px; background: var(--accent-soft);
     color: var(--accent); font-size: 13.5px; font-weight: 700;
@@ -358,6 +386,7 @@
 <body>
 
 <div class="wrap">
+  <div id="screenList">
   <header class="hero">
     <p class="eyebrow">尾道市 中学生向け ・ 学校の外で活動できる場所</p>
     <h1>土日に、<em>やりたいこと</em>を続けられる場所さがし</h1>
@@ -414,6 +443,28 @@
     <p>掲載を希望する団体の方は、教育委員会（学校教育課）までご連絡ください。</p>
     <p id="updated"></p>
   </footer>
+  </div><!-- /#screenList -->
+
+  <section class="screen" id="screenForm" hidden aria-label="問い合わせ・申し込み">
+    <button type="button" class="screen-back" id="formBack">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      一覧にもどる
+    </button>
+    <div id="formHost"></div>
+  </section>
+
+  <section class="screen" id="screenDone" hidden aria-label="送信しました">
+    <div class="done">
+      <div class="done-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 7"/></svg>
+      </div>
+      <h2 id="doneTitle"></h2>
+      <p id="doneText"></p>
+      <p class="done-club" id="doneClub"></p>
+      <button type="button" class="done-back" id="doneBack">一覧にもどる</button>
+    </div>
+  </section>
+
 </div>
 
 <script>
@@ -631,38 +682,31 @@
   }
 
   /**
-   * カード下部の問い合わせ欄。_form が 1 か 2 かで出し分ける。
+   * カードの一番下に置く行動ボタン。「くわしく見る」の外に出してあるので、
+   * 開かなくても押せる。押すと入力画面へ移る。
    *
-   * パターン1：できることが1つしかないので、ボタンを挟まずフォームをそのまま出す
-   * パターン2：問い合わせか申し込みかを選んでもらうため、ボタンから開く
+   * パターン1：問い合わせだけ（申し込みもこの中に含める）
+   * パターン2：問い合わせと申し込みを分ける
    */
   function contactButtons(r) {
     if (!r._canContact) return "";
     const two = r._form === 2;
     const label = SHOW_PATTERN_LABEL ? `<span class="cf-pattern">パターン${two ? 2 : 1}</span>` : "";
-
-    if (!two) {
-      return `
-        <div class="cf">
-          ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
-          ${contactForm(r._row, "inquiry", 1)}
-        </div>`;
-    }
-
     const btn = (type, cls) =>
-      `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}" aria-expanded="false">${esc(FORM_TITLE[type])}</button>`;
+      `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}">${esc(FORM_TITLE[type])}</button>`;
     return `
       <div class="cf">
         ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
-        <div class="cf-actions">${btn("inquiry", "")}${btn("apply", "primary")}</div>
+        <div class="cf-actions">${two ? btn("inquiry", "") + btn("apply", "primary") : btn("inquiry", "primary")}</div>
       </div>`;
   }
 
-  /** 開いたときに差し込むフォーム本体 */
-  function contactForm(row, type, form) {
+  /** 入力画面の中身。r は団体の行 */
+  function contactForm(r, type) {
     return `
-      <form class="cf-form" data-row="${esc(row)}" data-type="${esc(type)}" data-opened="${Date.now()}">
-        <h3>${esc(FORM_TITLE[type])}</h3>
+      <form class="cf-form" data-row="${esc(r._row)}" data-type="${esc(type)}" data-opened="${Date.now()}">
+        <p class="cf-for">${esc(r[COL.name])}</p>
+        <h2 class="cf-title">${esc(FORM_TITLE[type])}</h2>
         <label>お名前
           <input type="text" name="name" autocomplete="name" maxlength="100" required>
         </label>
@@ -670,7 +714,7 @@
           <input type="text" name="contact" autocomplete="email" maxlength="200" required>
         </label>
         <label>${esc(MESSAGE_LABEL[type])}
-          <textarea name="message" maxlength="2000" required placeholder="${esc(messageHint(type, form))}"></textarea>
+          <textarea name="message" maxlength="2000" required placeholder="${esc(messageHint(type, r._form))}"></textarea>
         </label>
         <div class="cf-hp" aria-hidden="true"><label>こちらは入力しないでください<input type="text" name="hp" tabindex="-1" autocomplete="off"></label></div>
         <p class="cf-privacy">入力されたお名前・ご連絡先・内容は、この団体の運営者と本サイトの運営者にのみ通知されます。ほかの目的には使いません。</p>
@@ -733,9 +777,9 @@
               </div>
               <p class="lock-msg" role="status"></p>
             </form>` : url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">公式サイト・申込み ↗</a>` : ""}
-            ${contactButtons(r)}
           </div>
         </details>
+        ${contactButtons(r)}
       </article>`;
   }
 
@@ -826,33 +870,72 @@
 
   $("resetAll").addEventListener("click", resetAll);
 
-  // 「問い合わせる」「申し込む」ボタン：フォームを開閉する
+  // ---- 画面の切り替え ----
+  //  一覧 →（問い合わせる／申し込む）→ 入力画面 →（送信）→ 完了画面
+  //  端末の「戻る」でも一覧に帰れるよう、履歴にも積む
+  let listScrollY = 0;
+
+  // 画面の出し入れを自分で管理するので、ブラウザ任せの位置復元は切る
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+  function showScreen(name) {
+    $("screenList").hidden = name !== "list";
+    $("screenForm").hidden = name !== "form";
+    $("screenDone").hidden = name !== "done";
+  }
+
+  function openContactScreen(row, type) {
+    const r = rows.filter((x) => x._row === Number(row))[0];
+    if (!r) return;
+
+    listScrollY = window.scrollY;
+    $("formHost").innerHTML = contactForm(r, type);
+    showScreen("form");
+    window.scrollTo(0, 0);
+    history.pushState({ screen: "form" }, "");
+
+    const input = $("formHost").querySelector("input[name=name]");
+    if (input) input.focus({ preventScroll: true });
+  }
+
+  function showDoneScreen(r, type, message) {
+    $("doneTitle").textContent = type === "apply" ? "お申し込みを送信しました" : "お問い合わせを送信しました";
+    $("doneText").textContent = message;
+    $("doneClub").textContent = r ? r[COL.name] : "";
+    showScreen("done");
+    window.scrollTo(0, 0);
+    // 完了後に端末の「戻る」を押したとき、入力済みの画面には戻さない
+    history.replaceState({ screen: "done" }, "");
+  }
+
+  function backToList() {
+    showScreen("list");
+    $("formHost").innerHTML = "";
+    // 一覧を出した直後は文書の高さが戻っていないため、そのまま
+    // scrollTo すると 0 に丸められる。高さを読んでレイアウトを
+    // 確定させてから位置を戻す
+    void document.body.offsetHeight;
+    window.scrollTo(0, listScrollY);
+  }
+
+  window.addEventListener("popstate", () => {
+    if (!$("screenList").hidden) return;
+    backToList();
+  });
+
+  // 「もどる」は履歴を1つ戻す。自分で画面を切り替えると履歴がずれるため
+  $("formBack").addEventListener("click", () => history.back());
+  $("doneBack").addEventListener("click", () => history.back());
+
+  // 「問い合わせる」「申し込む」ボタン：入力画面へ移る
   $("list").addEventListener("click", (e) => {
     const btn = e.target.closest(".cf-open");
     if (!btn) return;
-    const box = btn.closest(".cf");
-    const open = btn.getAttribute("aria-expanded") === "true";
-
-    // 同じカードの他のボタンを閉じ、開いていたフォームを外す
-    box.querySelectorAll(".cf-open").forEach((b) => b.setAttribute("aria-expanded", "false"));
-    const existing = box.querySelector(".cf-form, .cf-done");
-    if (existing) existing.remove();
-
-    if (open) return; // 押したボタンが開いていたなら、閉じるだけ
-
-    btn.setAttribute("aria-expanded", "true");
-    box.insertAdjacentHTML("beforeend", contactForm(btn.dataset.row, btn.dataset.type, 2)); // ボタンが出るのはパターン2だけ
-
-    // スマホでは開いたフォームが画面の外に出ることがある。
-    // 画面に入るまでスクロールしてから、お名前に入力できる状態にする
-    const form = box.querySelector(".cf-form");
-    if (form) form.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    const input = form && form.querySelector("input[name=name]");
-    if (input) input.focus({ preventScroll: true });
+    openContactScreen(btn.dataset.row, btn.dataset.type);
   });
 
-  // フォームの送信
-  $("list").addEventListener("submit", (e) => {
+  // 入力画面の送信
+  $("screenForm").addEventListener("submit", (e) => {
     const form = e.target.closest("form.cf-form");
     if (!form) return;
     e.preventDefault();
@@ -885,9 +968,8 @@
         send.disabled = false;
         return fail(msg, (res && res.message) || "送信できませんでした。");
       }
-      const box = form.closest(".cf");
-      box.querySelectorAll(".cf-open").forEach((b) => b.setAttribute("aria-expanded", "false"));
-      form.outerHTML = `<p class="cf-done" role="status">${esc(res.message)}</p>`;
+      const r = rows.filter((x) => x._row === Number(form.dataset.row))[0];
+      showDoneScreen(r, form.dataset.type, res.message);
     }).catch((err) => {
       send.disabled = false;
       fail(msg, "送信できませんでした。時間をおいてお試しください。");
