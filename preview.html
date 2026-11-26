@@ -140,6 +140,7 @@
   .chips button .n { color: var(--muted); font-size: 11px; margin-left: 3px; font-variant-numeric: tabular-nums; }
   .chips button[aria-pressed="true"] .n { color: inherit; }
 
+  #flagChips { flex-wrap: wrap; overflow-x: visible; }
   .selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .selects label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
   .selects select {
@@ -245,12 +246,6 @@
   .cf-open[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
   .card.event .cf-open { border-color: var(--event); color: var(--event); }
   .card.event .cf-open.primary { background: var(--event); color: #fff; }
-  .cf-pattern {
-    font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
-    border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px;
-  }
-  /* 試用中の目印。ボタンと行を取り合わないよう、必ず単独の行に置く */
-  .cf-actions-label { justify-content: flex-end; }
   .cf-form {
     display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line);
     border-radius: 10px; background: var(--bg);
@@ -370,6 +365,7 @@
         <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
         <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
       </div>
+      <div class="chips" id="flagChips" role="group" aria-label="条件でしぼりこむ"></div>
       <div class="selects">
         <label>校区（最寄りの中学校）
           <select id="school"><option value="">すべての校区</option></select>
@@ -441,7 +437,7 @@
   ];
 
   // ------------------------------------------------------------
-  const state = { kind: "", school: "", q: "" };
+  const state = { kind: "", school: "", q: "", flags: [] };
   let rows = [];
 
   const $ = (id) => document.getElementById(id);
@@ -492,8 +488,8 @@
       ];
       out[COL.access] = r[COL.access] || SAMPLE_ACCESS[i % SAMPLE_ACCESS.length];
       delete out[COL.mail];
+      out._flags = { "見学・体験あり": i % 2 === 0, "無料": /無料/.test(r[COL.fee] || "") };
       out._canContact = true;          // サンプルでは全団体で試せるようにする
-      out._form = (i % 2 === 0) ? 1 : 2; // 奇数番目=パターン1、偶数番目=パターン2
       return out;
     });
   }
@@ -512,13 +508,42 @@
     }), 600));
   }
 
+  const FLAG_COLS = ["見学・体験あり", "無料"];
+
+  /**
+   * その行がその条件に当てはまるか。
+   * イベントは参加すること自体が体験なので、チェックの有無によらず
+   * 「見学・体験あり」として扱う。
+   */
+  function hasFlag(r, f) {
+    if (f === "見学・体験あり" && isEvent_(r)) return true;
+    return !!(r._flags && r._flags[f]);
+  }
+
   function filtered() {
     const q = state.q.trim().toLowerCase();
     return rows.filter((r) =>
       (!state.kind || r[COL.kind] === state.kind) &&
       (!state.school || r[COL.school] === state.school || r[COL.school] === "全域") &&
+      state.flags.every((f) => hasFlag(r, f)) &&
       (!q || [COL.name, COL.sport, COL.place, COL.desc, COL.school, COL.access].some((k) => (r[k] || "").toLowerCase().includes(q)))
     );
+  }
+
+  // 該当する団体がある条件だけを出す（押しても0件になる行き止まりを作らない）
+  function renderFlagChips() {
+    const counts = new Map();
+    rows.forEach((r) => FLAG_COLS.forEach((f) => {
+      if (hasFlag(r, f)) counts.set(f, (counts.get(f) || 0) + 1);
+    }));
+    const available = FLAG_COLS.filter((f) => counts.has(f));
+    state.flags = state.flags.filter((f) => counts.has(f));
+
+    const box = $("flagChips");
+    box.hidden = available.length === 0;
+    box.innerHTML = available.map((f) =>
+      `<button type="button" data-flag="${esc(f)}" aria-pressed="${state.flags.indexOf(f) !== -1}">${esc(f)}<span class="n">${counts.get(f)}</span></button>`
+    ).join("");
   }
 
   function renderSchools() {
@@ -527,9 +552,6 @@
     sel.innerHTML = `<option value="">すべての校区</option>` + [...set].sort((a, b) => a.localeCompare(b, "ja")).map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
     sel.value = state.school;
   }
-
-  // 試用中のA/B表示。どちらの形にするか決まったら false にしてください
-  const SHOW_PATTERN_LABEL = true;
 
   const MESSAGE_LABEL = {
     inquiry: "お問い合わせ内容",
@@ -550,17 +572,14 @@
     return isEvent_(r) ? "このイベントについて問い合わせる" : "この団体に問い合わせる";
   }
 
-  // 入力欄の下書き文言。パターン1は申し込みもここに含めるため、
-  // 参加・見学の連絡もできることが伝わる書き方にしている
+  // 入力欄の下書き文言
   const MESSAGE_HINT = {
     club: {
       inquiry: "聞きたいことをご記入ください（例：初心者でも参加できますか）",
-      inquiryOnly: "ご質問や、見学・体験のご希望をご記入ください（例：土曜の練習を見学したいです）",
       apply: "希望の日程や、見学・体験どちらかをご記入ください",
     },
     event: {
       inquiry: "聞きたいことをご記入ください（例：当日の持ち物はありますか）",
-      inquiryOnly: "ご質問や、参加のご希望をご記入ください（例：参加したいです／持ち物はありますか）",
       apply: "参加する人の学年や人数など、必要なことをご記入ください",
     },
   };
@@ -568,27 +587,21 @@
   /** その団体・イベントのフォームに出す下書き文言を選ぶ */
   function messageHint(r, type) {
     const set = isEvent_(r) ? MESSAGE_HINT.event : MESSAGE_HINT.club;
-    if (type === "apply") return set.apply;
-    return r._form === 1 ? set.inquiryOnly : set.inquiry;
+    return type === "apply" ? set.apply : set.inquiry;
   }
 
   /**
    * カードの一番下に置く行動ボタン。「くわしく見る」の外に出してあるので、
    * 開かなくても押せる。押すと入力画面へ移る。
-   *
-   * パターン1：問い合わせだけ（申し込みもこの中に含める）
-   * パターン2：問い合わせと申し込みを分ける
+   * 問い合わせと申し込みを分けて並べる。
    */
   function contactButtons(r) {
     if (!r._canContact) return "";
-    const two = r._form === 2;
-    const label = SHOW_PATTERN_LABEL ? `<span class="cf-pattern">パターン${two ? 2 : 1}</span>` : "";
     const btn = (type, cls) =>
       `<button type="button" class="cf-open ${cls}" data-row="${esc(r._row)}" data-type="${type}">${esc(formTitle(r, type))}</button>`;
     return `
       <div class="cf">
-        ${label ? `<div class="cf-actions cf-actions-label">${label}</div>` : ""}
-        <div class="cf-actions">${two ? btn("inquiry", "") + btn("apply", "primary") : btn("inquiry", "primary")}</div>
+        <div class="cf-actions">${btn("inquiry", "")}${btn("apply", "primary")}</div>
       </div>`;
   }
 
@@ -659,7 +672,7 @@
 
   /** 適用中の条件の数。検索語も1つと数える */
   function activeCount() {
-    return (state.kind ? 1 : 0) + (state.school ? 1 : 0) + (state.q.trim() ? 1 : 0);
+    return (state.kind ? 1 : 0) + (state.school ? 1 : 0) + (state.q.trim() ? 1 : 0) + state.flags.length;
   }
 
   /** しぼりこみボタンのバッジと「条件をクリア」の出し入れ */
@@ -674,6 +687,7 @@
   }
 
   function render() {
+    renderFlagChips();
     renderFilterBar();
     const list = filtered();
     $("count").textContent = list.length;
@@ -684,7 +698,7 @@
   }
 
   function resetAll() {
-    Object.assign(state, { kind: "", school: "", q: "" });
+    Object.assign(state, { kind: "", school: "", q: "", flags: [] });
     $("q").value = ""; $("searchBox").classList.remove("has-value");
     $("school").value = "";
     $("kindSeg").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.kind === "" ? "true" : "false"));
@@ -700,6 +714,14 @@
     const b = e.target.closest("button"); if (!b) return;
     state.kind = b.dataset.kind;
     $("kindSeg").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    render();
+  });
+  $("flagChips").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-flag]");
+    if (!b) return;
+    const f = b.dataset.flag;
+    const i = state.flags.indexOf(f);
+    if (i === -1) state.flags.push(f); else state.flags.splice(i, 1);
     render();
   });
   $("school").addEventListener("change", (e) => { state.school = e.target.value; render(); });
