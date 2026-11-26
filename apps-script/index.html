@@ -144,16 +144,6 @@
   .chips button .n { color: var(--muted); font-size: 11px; margin-left: 3px; font-variant-numeric: tabular-nums; }
   .chips button[aria-pressed="true"] .n { color: inherit; }
 
-  .accessfilter { display: grid; gap: 4px; }
-  /* 行き方は項目数が決まっているので、横スクロールにせず折り返して全部見せる
-     （横に流れると、画面の外にある条件に気づけない） */
-  #accessChips { flex-wrap: wrap; overflow-x: visible; }
-  .accessfilter-label { font-size: 12.5px; color: var(--muted); }
-  .access-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-  .access-tag {
-    display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 8px;
-    border-radius: 999px; background: var(--accent-soft); color: var(--accent); line-height: 1.6;
-  }
   .selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .selects label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
   .selects select {
@@ -244,38 +234,6 @@
   }
   .card.event .btn { background: var(--event); color: #fff; }
 
-  .lock {
-    display: grid; gap: 6px; padding: 10px 12px;
-    border: 1px dashed var(--line); border-radius: 10px; background: var(--bg);
-  }
-  .lock-note { margin: 0; font-size: 12.5px; color: var(--muted); }
-  .lock-row { display: flex; gap: 8px; }
-  .pw-wrap { position: relative; flex: 1; min-width: 0; }
-  .lock-row input {
-    width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 8px;
-    background: var(--surface); color: var(--ink); font: inherit; font-size: 16px;
-    padding: 0 44px 0 10px; /* 右は目のボタンのぶん空ける */
-  }
-  /* パスワードの表示／非表示を切り替える目のボタン（入力欄の右端に重ねる） */
-  .pw-toggle {
-    position: absolute; top: 1px; right: 1px; width: 40px; height: 38px;
-    display: grid; place-items: center;
-    border: 0; border-radius: 0 7px 7px 0; background: none; color: var(--muted); cursor: pointer; padding: 0;
-  }
-  .pw-toggle:hover { color: var(--ink); }
-  .pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .pw-toggle svg { width: 20px; height: 20px; display: block; }
-  .pw-toggle .icon-off { display: none; }
-  .pw-toggle[aria-pressed="true"] .icon-on { display: none; }
-  .pw-toggle[aria-pressed="true"] .icon-off { display: block; }
-  .pw-toggle[aria-pressed="true"] { color: var(--accent); }
-  .lock-row button[type="submit"] {
-    flex: none; height: 40px; padding: 0 16px; border: 0; border-radius: 8px;
-    background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
-  }
-  .lock-row button[disabled] { opacity: .55; cursor: default; }
-  .lock-msg { margin: 0; font-size: 12.5px; min-height: 1.3em; color: var(--muted); }
-  .lock-msg.error { color: var(--event); }
 
   /* ---- 問い合わせ・申し込み（試用中のA/B） ---- */
   .cf { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
@@ -418,20 +376,9 @@
         <button type="button" data-kind="クラブ" aria-pressed="false">クラブ</button>
         <button type="button" data-kind="イベント" aria-pressed="false">イベント</button>
       </div>
-      <div class="accessfilter">
-        <span class="accessfilter-label">行き方</span>
-        <div class="chips" id="accessChips" role="group" aria-label="行き方でしぼりこむ"></div>
-      </div>
       <div class="selects">
         <label>校区（最寄りの中学校）
           <select id="school"><option value="">すべての校区</option></select>
-        </label>
-        <label>参加できる人
-          <select id="target">
-            <option value="">だれでも</option>
-            <option value="男子">男子が参加できる</option>
-            <option value="女子">女子が参加できる</option>
-          </select>
         </label>
       </div>
   </div>
@@ -480,7 +427,7 @@
   const COL = {
     pub: "公開", kind: "種別", sport: "種目", name: "名称", target: "参加対象", grade: "対象学年",
     fee: "費用", days: "活動日", place: "活動場所", school: "校区", desc: "紹介", contact: "連絡先", url: "URL",
-    pw: "URLパスワード", mail: "問い合わせ先メール", access: "アクセス"
+    mail: "問い合わせ先メール", access: "アクセス"
   };
 
   // ---- サンプルデータ（架空の団体です） ----
@@ -493,14 +440,14 @@
     { 公開:"TRUE", 種別:"クラブ", 種目:"剣道", 名称:"尾道剣友会", 参加対象:"男子・女子", 対象学年:"小1〜中3", 費用:"月2,500円", 活動日:"週2日（火・金 18:30〜20:30）", 活動場所:"久保中学校 武道場", 校区:"久保中学校", 紹介:"創立40年。防具の貸出あり。段審査の受審サポートも行います。", 連絡先:"担当：中村（0848-00-0003）", URL:"" },
     { 公開:"TRUE", 種別:"クラブ", 種目:"バレーボール", 名称:"日比崎ジュニアバレーボール", 参加対象:"女子", 対象学年:"中1〜中3", 費用:"月2,000円", 活動日:"週2日（水・土）", 活動場所:"日比崎中学校 体育館", 校区:"日比崎中学校", 紹介:"日比崎中の元部活動を母体としたクラブ。他校区からも参加できます。", 連絡先:"担当：小林", URL:"" },
     { 公開:"TRUE", 種別:"クラブ", 種目:"野球", 名称:"因島ボーイズ", 参加対象:"男子", 対象学年:"中1〜中3", 費用:"月8,000円", 活動日:"週3日（土・日・祝）", 活動場所:"因島運動公園 野球場", 校区:"因島南中学校", 紹介:"日本少年野球連盟（ボーイズリーグ）所属。硬式。用具の初期費用が別途かかります。", 連絡先:"innoshima-boys@example.com", URL:"https://example.com/innoshima-boys" },
-    { 公開:"TRUE", 種別:"クラブ", 種目:"ダンス", 名称:"ONO-D ダンススタジオ ジュニアクラス", 参加対象:"男子・女子", 対象学年:"中1〜高3", 費用:"月5,000円", 活動日:"週1日（金 19:00〜20:30）", 活動場所:"尾道駅前 スタジオ（尾道市東御所町）", 校区:"栗原中学校", 紹介:"HIPHOP・JAZZ。年1回、尾道みなと祭で発表します。", 連絡先:"onod@example.com", URL:"https://example.com/ono-d", URLパスワード:"dance2026" },
+    { 公開:"TRUE", 種別:"クラブ", 種目:"ダンス", 名称:"ONO-D ダンススタジオ ジュニアクラス", 参加対象:"男子・女子", 対象学年:"中1〜高3", 費用:"月5,000円", 活動日:"週1日（金 19:00〜20:30）", 活動場所:"尾道駅前 スタジオ（尾道市東御所町）", 校区:"栗原中学校", 紹介:"HIPHOP・JAZZ。年1回、尾道みなと祭で発表します。", 連絡先:"onod@example.com", URL:"https://example.com/ono-d" },
     { 公開:"TRUE", 種別:"クラブ", 種目:"美術", 名称:"尾道アートスクール", 参加対象:"男子・女子", 対象学年:"小4〜中3", 費用:"月3,500円（画材込み）", 活動日:"月2回（第2・4 土 10:00〜12:00）", 活動場所:"尾道市立美術館 市民ギャラリー", 校区:"長江中学校", 紹介:"デッサン・水彩・版画。夏には千光寺公園で写生会。", 連絡先:"担当：岡田", URL:"" },
     { 公開:"TRUE", 種別:"イベント", 種目:"体験会", 名称:"しまなみサイクリング体験教室", 参加対象:"男子・女子", 対象学年:"小4〜中3", 費用:"無料（要申込）", 活動日:"2026年10月11日（日）9:00〜12:00", 活動場所:"尾道港 ONOMICHI U2 前 集合", 校区:"全域", 紹介:"ロードバイクの乗り方から向島一周まで。自転車・ヘルメットは貸出あり。定員20名。", 連絡先:"尾道市観光課", URL:"https://example.com/cycling-trial" },
     { 公開:"TRUE", 種別:"イベント", 種目:"体験会", 名称:"バドミントン無料体験会", 参加対象:"男子・女子", 対象学年:"中1〜中3", 費用:"無料", 活動日:"2026年10月25日（日）13:00〜15:00", 活動場所:"尾道市総合体育館", 校区:"全域", 紹介:"市バドミントン協会主催。ラケット貸出あり。体験後、クラブへの参加相談もできます。", 連絡先:"尾道市バドミントン協会", URL:"" }
   ];
 
   // ------------------------------------------------------------
-  const state = { kind: "", school: "", target: "", q: "", access: [] };
+  const state = { kind: "", school: "", q: "" };
   let rows = [];
 
   const $ = (id) => document.getElementById(id);
@@ -550,30 +497,12 @@
         "駐車場のみ（最寄りのバス停から徒歩25分）",
       ];
       out[COL.access] = r[COL.access] || SAMPLE_ACCESS[i % SAMPLE_ACCESS.length];
-      out._access = {
-        "駅・バス停・渡船場から徒歩10分以内": i % 3 !== 2,
-        "駐輪場あり": i % 2 === 0,
-        "駐車場あり": i % 4 === 1,
-      };
-      delete out[COL.pw];
       delete out[COL.mail];
-      if (r[COL.pw]) { out[COL.url] = ""; out._locked = true; }
       out._canContact = true;          // サンプルでは全団体で試せるようにする
       out._form = (i % 2 === 0) ? 1 : 2; // 奇数番目=パターン1、偶数番目=パターン2
       return out;
     });
   }
-
-  // 目のアイコン。上が「今は隠れている（押すと見える）」、下が「今は見えている」
-  const EYE_ICONS =
-    '<svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg>' +
-    '<svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M9.9 5.2A9.9 9.9 0 0 1 12 5c7 0 10.5 7 10.5 7a18 18 0 0 1-3.3 4.2M6.3 6.8A18 18 0 0 0 1.5 12S5 19 12 19a9.8 9.8 0 0 0 4.2-.9"/>' +
-    '<path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
-
-  // 一度あけたリンクは、絞り込みを変えても開いたままにする（行番号 → URL）
-  const unlocked = new Map();
 
   /** 問い合わせ・申し込みを送る。{ok, message} を返す */
   function sendContact(payload) {
@@ -589,52 +518,13 @@
     }), 600));
   }
 
-  /** パスワードと引き換えに URL を受け取る。{ok, url} を返す */
-  function unlockUrl(row, password) {
-    if (window.google && google.script && google.script.run) {
-      return new Promise((resolve, reject) =>
-        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getUrl(Number(row), password));
-    }
-    if (CONFIG.csvUrl) {
-      // CSV 公開方式にはパスワードを確かめるサーバーがありません（README 参照）
-      return Promise.reject(new Error("この表示方法ではパスワードを確認できません"));
-    }
-    // ---- サンプル表示のみの簡易判定。実際の保護は上の Apps Script 側で行われます ----
-    const r = SAMPLE.filter(isPublic)[Number(row) - 2];
-    if (!r) return Promise.resolve({ ok: false });
-    if (String(password) !== String(r[COL.pw] || "")) return Promise.resolve({ ok: false });
-    return Promise.resolve({ ok: true, url: r[COL.url] || "" });
-  }
-
   function filtered() {
     const q = state.q.trim().toLowerCase();
     return rows.filter((r) =>
       (!state.kind || r[COL.kind] === state.kind) &&
       (!state.school || r[COL.school] === state.school || r[COL.school] === "全域") &&
-      (!state.target || (r[COL.target] || "").includes(state.target)) &&
-      state.access.every((f) => r._access && r._access[f]) &&
       (!q || [COL.name, COL.sport, COL.place, COL.desc, COL.school, COL.access].some((k) => (r[k] || "").toLowerCase().includes(q)))
     );
-  }
-
-  // 行き方のしぼりこみ。該当する団体がある条件だけを出す
-  const ACCESS_FLAGS = ["駅・バス停・渡船場から徒歩10分以内", "駐輪場あり", "駐車場あり"];
-
-  function renderAccessChips() {
-    const counts = new Map();
-    rows.forEach((r) => ACCESS_FLAGS.forEach((f) => {
-      if (r._access && r._access[f]) counts.set(f, (counts.get(f) || 0) + 1);
-    }));
-    const available = ACCESS_FLAGS.filter((f) => counts.has(f));
-
-    // 条件に合う団体が1つも無くなったら、その指定は外す
-    state.access = state.access.filter((f) => counts.has(f));
-
-    const box = $("accessChips");
-    box.closest(".accessfilter").hidden = available.length === 0;
-    box.innerHTML = available.map((f) =>
-      `<button type="button" data-access="${esc(f)}" aria-pressed="${state.access.indexOf(f) !== -1}">${esc(f)}<span class="n">${counts.get(f)}</span></button>`
-    ).join("");
   }
 
   function renderSchools() {
@@ -734,21 +624,15 @@
       </form>`;
   }
 
-  /** facts に並べる「行き方」。自由文と、該当する目印を出す */
+  /** facts に並べる「行き方」 */
   function accessRow(r) {
     const text = (r[COL.access] || "").trim();
-    const tags = ACCESS_FLAGS.filter((f) => r._access && r._access[f]);
-    if (!text && !tags.length) return "";
-    return `<div><dt>行き方</dt><dd>${text ? esc(text) : "—"}${
-      tags.length ? `<div class="access-tags">${tags.map((f) => `<span class="access-tag">${esc(f)}</span>`).join("")}</div>` : ""
-    }</dd></div>`;
+    return text ? `<div><dt>行き方</dt><dd>${esc(text)}</dd></div>` : "";
   }
 
   function card(r) {
     const isEvent = r[COL.kind] === "イベント";
-    const open = unlocked.has(r._row);
-    const url = open ? unlocked.get(r._row) : (r[COL.url] || "").trim();
-    const locked = r._locked && !open;
+    const url = (r[COL.url] || "").trim();
     const target = [r[COL.target], r[COL.grade]].filter(Boolean).join(" ／ ");
     return `
       <article class="card${isEvent ? " event" : ""}">
@@ -772,17 +656,7 @@
               ${r[COL.school] ? `<span>校区：<b>${esc(r[COL.school])}</b></span>` : ""}
               ${r[COL.contact] ? `<span>連絡先：<b>${esc(r[COL.contact])}</b></span>` : ""}
             </div>
-            ${locked ? `<form class="lock" data-row="${esc(r._row)}">
-              <p class="lock-note">この団体のリンクは、パスワードを知っている人だけが開けます。</p>
-              <div class="lock-row">
-                <div class="pw-wrap">
-                  <input type="password" name="pw" placeholder="パスワード" autocomplete="off" aria-label="パスワード">
-                  <button type="button" class="pw-toggle" aria-pressed="false" aria-label="パスワードを表示する" title="パスワードを表示する">${EYE_ICONS}</button>
-                </div>
-                <button type="submit">リンクを表示</button>
-              </div>
-              <p class="lock-msg" role="status"></p>
-            </form>` : url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">公式サイト・申込み ↗</a>` : ""}
+            ${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">公式サイト・申込み ↗</a>` : ""}
           </div>
         </details>
         ${contactButtons(r)}
@@ -791,8 +665,7 @@
 
   /** 適用中の条件の数。検索語も1つと数える */
   function activeCount() {
-    return (state.kind ? 1 : 0) + (state.school ? 1 : 0)
-      + (state.target ? 1 : 0) + (state.q.trim() ? 1 : 0) + state.access.length;
+    return (state.kind ? 1 : 0) + (state.school ? 1 : 0) + (state.q.trim() ? 1 : 0);
   }
 
   /** しぼりこみボタンのバッジと「条件をクリア」の出し入れ */
@@ -807,7 +680,6 @@
   }
 
   function render() {
-    renderAccessChips();
     renderFilterBar();
     const list = filtered();
     $("count").textContent = list.length;
@@ -818,9 +690,9 @@
   }
 
   function resetAll() {
-    Object.assign(state, { kind: "", school: "", target: "", q: "", access: [] });
+    Object.assign(state, { kind: "", school: "", q: "" });
     $("q").value = ""; $("searchBox").classList.remove("has-value");
-    $("school").value = ""; $("target").value = "";
+    $("school").value = "";
     $("kindSeg").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.kind === "" ? "true" : "false"));
     render();
   }
@@ -837,16 +709,6 @@
     render();
   });
   $("school").addEventListener("change", (e) => { state.school = e.target.value; render(); });
-  $("target").addEventListener("change", (e) => { state.target = e.target.value; render(); });
-  $("accessChips").addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-access]");
-    if (!b) return;
-    const f = b.dataset.access;
-    const i = state.access.indexOf(f);
-    if (i === -1) state.access.push(f); else state.access.splice(i, 1);
-    render();
-  });
-
   // 条件のパネルは固定部の外にあるので、スクロールすれば自然に流れて消える。
   // 高さが変わらないため、表示がずれることがない。
   // 条件パネルは閉じた状態で始める。最初の画面は結果を見せることを優先する。
@@ -1007,58 +869,6 @@
     msg.className = "cf-msg error";
     msg.textContent = text;
   }
-
-  // 目のボタン：パスワードの表示／非表示を切り替える
-  $("list").addEventListener("click", (e) => {
-    const btn = e.target.closest(".pw-toggle");
-    if (!btn) return;
-    const input = btn.parentNode.querySelector("input[name=pw]");
-    if (!input) return;
-    const show = btn.getAttribute("aria-pressed") !== "true";
-    input.type = show ? "text" : "password";
-    btn.setAttribute("aria-pressed", String(show));
-    const label = show ? "パスワードを隠す" : "パスワードを表示する";
-    btn.setAttribute("aria-label", label);
-    btn.setAttribute("title", label);
-    input.focus();
-    // カーソルを末尾に戻す（type を変えると先頭に飛ぶブラウザがあるため）
-    const n = input.value.length;
-    try { input.setSelectionRange(n, n); } catch (err) { /* 一部ブラウザは未対応 */ }
-  });
-
-  $("list").addEventListener("submit", (e) => {
-    const form = e.target.closest("form.lock");
-    if (!form) return;
-    e.preventDefault();
-    const row = Number(form.dataset.row);
-    const input = form.querySelector("input[name=pw]");
-    const btn = form.querySelector('button[type="submit"]');
-    const msg = form.querySelector(".lock-msg");
-    if (!input.value) { msg.className = "lock-msg error"; msg.textContent = "パスワードを入力してください。"; return; }
-
-    btn.disabled = true;
-    msg.className = "lock-msg";
-    msg.textContent = "確認しています…";
-
-    unlockUrl(row, input.value).then((res) => {
-      if (!res || !res.ok) {
-        btn.disabled = false;
-        msg.className = "lock-msg error";
-        msg.textContent = "パスワードが違います。もう一度お試しください。";
-        input.select();
-        return;
-      }
-      unlocked.set(row, res.url || "");
-      form.outerHTML = res.url
-        ? `<a class="btn" href="${esc(res.url)}" target="_blank" rel="noopener">公式サイト・申込み ↗</a>`
-        : `<p class="lock-note">この団体はリンクを登録していません。連絡先からお問い合わせください。</p>`;
-    }).catch((err) => {
-      btn.disabled = false;
-      msg.className = "lock-msg error";
-      msg.textContent = "確認できませんでした。時間をおいてお試しください。";
-      console.error(err);
-    });
-  });
 
   // ---- boot ----
   loadData().then((data) => {

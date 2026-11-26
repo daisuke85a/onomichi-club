@@ -62,10 +62,6 @@ function healthCheck() {
 
   // --- 3. 外に出してはいけないものが漏れていないか ---
   if (Array.isArray(rows)) {
-    const leaked = rows.filter(r => r._locked && r['URL']);
-    if (leaked.length) {
-      problems.push('パスワードで保護しているはずの URL が外に出ています（' + leaked.length + '件）。すぐに連絡先に相談してください');
-    }
     const leakedMail = rows.filter(r => r[CONTACT_COL]);
     if (leakedMail.length) {
       problems.push('団体の問い合わせ先メールが外に出ています（' + leakedMail.length + '件）。すぐに連絡先に相談してください');
